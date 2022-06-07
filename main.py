@@ -2,6 +2,7 @@
 # 1. IMPORT MODULES
 # 2. DATA FILES
 # 3. PRE-PROCESSING OF TEXT
+# 4. Test & Test & Cross Validation
 ####################
 
 
@@ -135,3 +136,85 @@ print('< pic9 >')
 result[result['ID'] == 1109]
 
 
+# 4. Test & Test & Cross Validation
+# Split data into Test & Test & Cross Validation
+y_true = result['Class'].values
+result.Gene = result.Gene.str.replace('\s+', '_')
+result.Variation = result.Variation.str.replace('\s+', '_')
+
+# Split the data into test & train
+# by maintaining same distribution of output variable 'y_true' [stratify=y_true]
+X_train, test_df, y_train, y_test = train_test_split(result, y_true, stratify=y_true, test_size=0.2)
+# Split the train data into train & cross validation
+# by maintaining same distribution of output variable 'y_train' [stratify=y_train]
+train_df, cv_df, y_train, y_cv = train_test_split(X_train, y_train, stratify=y_train, test_size=0.2)
+
+print('< split data > -> pic10.num of data validated')
+print('Number of data points in train data:', train_df.shape[0])
+print('Number of data points in test data:', test_df.shape[0])
+print('Number of data points in cross validation data:', cv_df.shape[0])
+
+
+# Distribution of y_i's in Train & Test & Cross Validation datasets
+# it returns a dict, keys as class labels and values as the number of data points in that class
+train_class_distribution = train_df['Class'].value_counts().sort_index()
+test_class_distribution = test_df['Class'].value_counts().sort_index()
+cv_class_distribution = cv_df['Class'].value_counts().sort_index()
+
+# my_colors = 'rgbkymc'
+color = ['red', 'blue', 'green', 'brown', 'yellow', 'purple', 'orange', 'pink', 'lime']
+
+# TRAINED DATA
+print('< Distribution of yi in trained data > -> pic 11')
+train_class_distribution.plot(kind='bar', color=color)
+plt.xlabel('Class')
+plt.ylabel('Data points per Class')
+plt.title('Distribution of yi in train data')
+plt.grid()
+plt.show()
+
+# ref: argsort https://docs.scipy.org/doc/numpy/reference/generated/numpy.argsort.html
+# -(train_class_distribution.values): the minus sign will give us in decreasing order
+sorted_yi = np.argsort(-train_class_distribution.values)
+print('< pic 12 >')
+for i in sorted_yi:
+    print('Number of data points in class', i + 1, ':', train_class_distribution.values[i], '(',
+          np.round((train_class_distribution.values[i] / train_df.shape[0] * 100), 3), '%)')
+print('-' * 80)
+
+
+# TEST DATA
+print('< Distribution of yi in TEST data > -> pic 13')
+test_class_distribution.plot(kind='bar', color=color)
+plt.xlabel('Class')
+plt.ylabel('Data points per Class')
+plt.title('Distribution of yi in test data')
+plt.grid()
+plt.show()
+
+# ref: argsort https://docs.scipy.org/doc/numpy/reference/generated/numpy.argsort.html
+# -(train_class_distribution.values): the minus sign will give us in decreasing order
+sorted_yi = np.argsort(-test_class_distribution.values)
+print('< pic 14 >')
+for i in sorted_yi:
+    print('Number of data points in class', i + 1, ':', test_class_distribution.values[i], '(',
+          np.round((test_class_distribution.values[i] / test_df.shape[0] * 100), 3), '%)')
+print('-' * 80)
+
+
+# CROSS VALIDATION DATA
+print('< Distribution of yi in CROSS VALIDATION data > -> pic 15')
+cv_class_distribution.plot(kind='bar', color=color)
+plt.xlabel('Class')
+plt.ylabel('Data points per Class')
+plt.title('Distribution of yi in cross validation data')
+plt.grid()
+plt.show()
+
+# ref: argsort https://docs.scipy.org/doc/numpy/reference/generated/numpy.argsort.html
+# -(train_class_distribution.values): the minus sign will give us in decreasing order
+sorted_yi = np.argsort(-train_class_distribution.values)
+print('< pic 16 >')
+for i in sorted_yi:
+    print('Number of data points in class', i + 1, ':', cv_class_distribution.values[i], '(',
+          np.round((cv_class_distribution.values[i] / cv_df.shape[0] * 100), 3), '%)')
