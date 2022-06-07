@@ -575,7 +575,7 @@ test_coverage = test_df[test_df['Gene'].isin(list(set(train_df['Gene'])))].shape
 cv_coverage = cv_df[cv_df['Gene'].isin(list(set(train_df['Gene'])))].shape[0]
 
 print('\n1. In test data', test_coverage, 'out of', test_df.shape[0], ":", (test_coverage / test_df.shape[0]) * 100)
-print('2. In cross validation data',cv_coverage, 'out of ',cv_df.shape[0],":" ,(cv_coverage/cv_df.shape[0])*100)
+print('2. In cross validation data', cv_coverage, 'out of ', cv_df.shape[0], ":", (cv_coverage / cv_df.shape[0]) * 100)
 
 ################
 # VARIATION FEATURE
@@ -593,7 +593,7 @@ print("There are", unique_variations.shape[0],
 
 print('< pic 29. histogram of variations >')
 s = sum(unique_variations.values);
-h = unique_variations.values/s;
+h = unique_variations.values / s;
 plt.plot(h, label="Histrogram of Variations")
 plt.xlabel('Index of a Variation')
 plt.ylabel('Number of Occurances')
@@ -604,7 +604,7 @@ plt.show()
 print('< pic 30. cumulative distribution of variations >')
 c = np.cumsum(h)
 print(c)
-plt.plot(c,label='Cumulative distribution of Variations')
+plt.plot(c, label='Cumulative distribution of Variations')
 plt.grid()
 plt.legend()
 plt.show()
@@ -706,10 +706,200 @@ print('2. In cross validation data', cv_coverage, 'out of ', cv_df.shape[0], ":"
 # TEXT FEATURE
 # Univariate Analysis on Text Feature
 
+# Text feature CHECK LIST
+# how many unique words are in train data
+# how are word frequencies distributed
+# how to featurize text field
+# is the text feature useful in predicting y_i
+# is the text feature stable across train & test & CV datasets
+#
+
+# cls_text is a data frame
+# for every row in data fram consider the 'TEXT'
+# split the words by space
+# make a dict with those words
+# increment its count whenever we see that word
+
+def extract_dictionary_paddle(cls_text):
+    dictionary = defaultdict(int)
+    for index, row in cls_text.iterrows():
+        for word in row['TEXT'].split():
+            dictionary[word] += 1
+    return dictionary
 
 
+import math
 
+
+# https://stackoverflow.com/a/1602964
+def get_text_responsecoding(df):
+    text_feature_responseCoding = np.zeros((df.shape[0], 9))
+    for i in range(0, 9):
+        row_index = 0
+        for index, row in df.iterrows():
+            sum_prob = 0
+            for word in row['TEXT'].split():
+                sum_prob += math.log(((dict_list[i].get(word, 0) + 10) / (total_dict.get(word, 0) + 90)))
+            text_feature_responseCoding[row_index][i] = math.exp(sum_prob / len(row['TEXT'].split()))
+            row_index += 1
+    return text_feature_responseCoding
+
+
+# building a CountVectorizer with all the words that occured minimum 3 times in train data
+text_vectorizer = CountVectorizer(min_df=3)
+train_text_feature_onehotCoding = text_vectorizer.fit_transform(train_df['TEXT'])
+# getting all the feature names (words)
+train_text_features = text_vectorizer.get_feature_names()
+
+# train_text_feature_onehotCoding.sum(axis=0).A1 will sum every row and returns (1*number of features) vector
+train_text_fea_counts = train_text_feature_onehotCoding.sum(axis=0).A1
+
+# zip(list(text_features),text_fea_counts) will zip a word with its number of times it occured
+text_fea_dict = dict(zip(list(train_text_features), train_text_fea_counts))
+
+print('< pic 35. train data unique words num >')
+print("Total number of unique words in train data :", len(train_text_features))
+
+dict_list = []
+# dict_list =[] contains 9 dictoinaries each corresponds to a class
+for i in range(1, 10):
+    cls_text = train_df[train_df['Class'] == i]
+    # build a word dict based on the words in that class
+    dict_list.append(extract_dictionary_paddle(cls_text))
+    # append it to dict_list
+
+# dict_list[i] is build on i'th  class text data
+# total_dict is buid on whole training text data
+total_dict = extract_dictionary_paddle(train_df)
+
+confuse_array = []
+for i in train_text_features:
+    ratios = []
+    max_val = -1
+    for j in range(0, 9):
+        ratios.append((dict_list[j][i] + 10) / (total_dict[i] + 90))
+    confuse_array.append(ratios)
+confuse_array = np.array(confuse_array)
+
+# response coding of text features
+train_text_feature_responseCoding = get_text_responsecoding(train_df)
+test_text_feature_responseCoding = get_text_responsecoding(test_df)
+cv_text_feature_responseCoding = get_text_responsecoding(cv_df)
+
+# https://stackoverflow.com/a/16202486
+# we convert each row values such that they sum to 1
+train_text_feature_responseCoding = (
+        train_text_feature_responseCoding.T / train_text_feature_responseCoding.sum(axis=1)).T
+test_text_feature_responseCoding = (test_text_feature_responseCoding.T / test_text_feature_responseCoding.sum(axis=1)).T
+cv_text_feature_responseCoding = (cv_text_feature_responseCoding.T / cv_text_feature_responseCoding.sum(axis=1)).T
+
+# don't forget to normalize every feature
+train_text_feature_onehotCoding = normalize(train_text_feature_onehotCoding, axis=0)
+
+# we use the same vectorizer that was trained on train data
+test_text_feature_onehotCoding = text_vectorizer.transform(test_df['TEXT'])
+# don't forget to normalize every feature
+test_text_feature_onehotCoding = normalize(test_text_feature_onehotCoding, axis=0)
+
+# we use the same vectorizer that was trained on train data
+cv_text_feature_onehotCoding = text_vectorizer.transform(cv_df['TEXT'])
+# don't forget to normalize every feature
+cv_text_feature_onehotCoding = normalize(cv_text_feature_onehotCoding, axis=0)
+
+# https://stackoverflow.com/a/2258273/4084039
+sorted_text_fea_dict = dict(sorted(text_fea_dict.items(), key=lambda x: x[1], reverse=True))
+sorted_text_occur = np.array(list(sorted_text_fea_dict.values()))
+
+# Number of words for a given frequency.
+print(Counter(sorted_text_occur))
+
+##############
+# Train a Logistic regression+Calibration model using text features whicha re on-hot encoded
+alpha = [10 ** x for x in range(-5, 1)]
+
+# read more about SGDClassifier() at http://scikit-learn.org/stable/modules/generated/sklearn.linear_model.SGDClassifier.html
+# ------------------------------
+# default parameters
+# SGDClassifier(loss=’hinge’, penalty=’l2’, alpha=0.0001, l1_ratio=0.15, fit_intercept=True, max_iter=None, tol=None,
+# shuffle=True, verbose=0, epsilon=0.1, n_jobs=1, random_state=None, learning_rate=’optimal’, eta0=0.0, power_t=0.5,
+# class_weight=None, warm_start=False, average=False, n_iter=None)
+
+# some of the methods
+# fit(X, y[, coef_init, intercept_init, …])	Fit linear model with Stochastic Gradient Descent.
+# predict(X)	Predict class labels for samples in X.
+
+# -------------------------------
+# video link:
+# ------------------------------
+
+print('< pic 36. values of alpha & best alpha>')
+print('< pic 37. cross validation error for each alpha>')
+cv_log_error_array = []
+for i in alpha:
+    clf = SGDClassifier(alpha=i, penalty='l2', loss='log', random_state=42)
+    clf.fit(train_text_feature_onehotCoding, y_train)
+
+    sig_clf = CalibratedClassifierCV(clf, method="sigmoid")
+    sig_clf.fit(train_text_feature_onehotCoding, y_train)
+    predict_y = sig_clf.predict_proba(cv_text_feature_onehotCoding)
+    cv_log_error_array.append(log_loss(y_cv, predict_y, labels=clf.classes_, eps=1e-15))
+    print('For values of alpha = ', i, "The log loss is:", log_loss(y_cv, predict_y, labels=clf.classes_, eps=1e-15))
+
+fig, ax = plt.subplots()
+ax.plot(alpha, cv_log_error_array, c='g')
+for i, txt in enumerate(np.round(cv_log_error_array, 3)):
+    ax.annotate((alpha[i], np.round(txt, 3)), (alpha[i], cv_log_error_array[i]))
+plt.grid()
+plt.title("Cross Validation Error for each alpha")
+plt.xlabel("Alpha i's")
+plt.ylabel("Error measure")
+plt.show()
+
+best_alpha = np.argmin(cv_log_error_array)
+clf = SGDClassifier(alpha=alpha[best_alpha], penalty='l2', loss='log', random_state=42)
+clf.fit(train_text_feature_onehotCoding, y_train)
+sig_clf = CalibratedClassifierCV(clf, method="sigmoid")
+sig_clf.fit(train_text_feature_onehotCoding, y_train)
+
+predict_y = sig_clf.predict_proba(train_text_feature_onehotCoding)
+print('For values of best alpha = ', alpha[best_alpha], "The train log loss is:",
+      log_loss(y_train, predict_y, labels=clf.classes_, eps=1e-15))
+predict_y = sig_clf.predict_proba(cv_text_feature_onehotCoding)
+print('For values of best alpha = ', alpha[best_alpha], "The cross validation log loss is:",
+      log_loss(y_cv, predict_y, labels=clf.classes_, eps=1e-15))
+predict_y = sig_clf.predict_proba(test_text_feature_onehotCoding)
+print('For values of best alpha = ', alpha[best_alpha], "The test log loss is:",
+      log_loss(y_test, predict_y, labels=clf.classes_, eps=1e-15))
+
+# throguh pic 37.
+# Text feature is stable across all the data sets
+# (test, train, cross validation)
+
+def get_intersec_text(df):
+    df_text_vec = CountVectorizer(min_df=3)
+    df_text_fea = df_text_vec.fit_transform(df['TEXT'])
+    df_text_features = df_text_vec.get_feature_names()
+
+    df_text_fea_counts = df_text_fea.sum(axis=0).A1
+    df_text_fea_dict = dict(zip(list(df_text_features), df_text_fea_counts))
+    len1 = len(set(df_text_features))
+    len2 = len(set(train_text_features) & set(df_text_features))
+    return len1, len2
+
+
+print('< pic 38. train data result>')
+len1, len2 = get_intersec_text(test_df)
+print(np.round((len2 / len1) * 100, 3), "% of word of test data appeared in train data")
+len1, len2 = get_intersec_text(cv_df)
+print(np.round((len2 / len1) * 100, 3), "% of word of Cross Validation appeared in train data")
 
 ########################
 ########################
 # 6. Machine Learning Models
+
+
+
+##############
+
+print('< pic 39. >')
+
