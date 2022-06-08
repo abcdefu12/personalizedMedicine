@@ -961,13 +961,59 @@ def get_impfeature_names(indices, text, gene, var, no_features):
 
     print("Out of the top ", no_features, " features ", word_present, "are present in query point")
 
+
 # 6.2 Stacking Three types of features
+# merging gene, variance and text features
+
+# building train, test and cross validation data sets
+# a = [[1, 2],
+#      [3, 4]]
+# b = [[4, 5],
+#      [6, 7]]
+# hstack(a, b) = [[1, 2, 4, 5],
+#                [ 3, 4, 6, 7]]
+
+train_gene_var_onehotCoding = hstack((train_gene_feature_onehotCoding, train_variation_feature_onehotCoding))
+test_gene_var_onehotCoding = hstack((test_gene_feature_onehotCoding, test_variation_feature_onehotCoding))
+cv_gene_var_onehotCoding = hstack((cv_gene_feature_onehotCoding, cv_variation_feature_onehotCoding))
+
+train_x_onehotCoding = hstack((train_gene_var_onehotCoding, train_text_feature_onehotCoding)).tocsr()
+train_y = np.array(list(train_df['Class']))
+
+test_x_onehotCoding = hstack((test_gene_var_onehotCoding, test_text_feature_onehotCoding)).tocsr()
+test_y = np.array(list(test_df['Class']))
+
+cv_x_onehotCoding = hstack((cv_gene_var_onehotCoding, cv_text_feature_onehotCoding)).tocsr()
+cv_y = np.array(list(cv_df['Class']))
+
+train_gene_var_responseCoding = np.hstack((train_gene_feature_responseCoding, train_variation_feature_responseCoding))
+test_gene_var_responseCoding = np.hstack((test_gene_feature_responseCoding, test_variation_feature_responseCoding))
+cv_gene_var_responseCoding = np.hstack((cv_gene_feature_responseCoding, cv_variation_feature_responseCoding))
+
+train_x_responseCoding = np.hstack((train_gene_var_responseCoding, train_text_feature_responseCoding))
+test_x_responseCoding = np.hstack((test_gene_var_responseCoding, test_text_feature_responseCoding))
+cv_x_responseCoding = np.hstack((cv_gene_var_responseCoding, cv_text_feature_responseCoding))
+
+print('< pic 39. >')
+print("One hot encoding features :")
+print("(number of data points * number of features) in train data = ", train_x_onehotCoding.shape)
+print("(number of data points * number of features) in test data = ", test_x_onehotCoding.shape)
+print("(number of data points * number of features) in cross validation data =", cv_x_onehotCoding.shape)
+print(" Response encoding features :")
+print("(number of data points * number of features) in train data = ", train_x_responseCoding.shape)
+print("(number of data points * number of features) in test data = ", test_x_responseCoding.shape)
+print("(number of data points * number of features) in cross validation data =", cv_x_responseCoding.shape)
+
+
+
+
+
+
+
 
 # ##########
 
 
-
-
 ##############
 
-print('< pic 39. >')
+print('< pic 40. >')
