@@ -871,6 +871,7 @@ predict_y = sig_clf.predict_proba(test_text_feature_onehotCoding)
 print('For values of best alpha = ', alpha[best_alpha], "The test log loss is:",
       log_loss(y_test, predict_y, labels=clf.classes_, eps=1e-15))
 
+
 # throguh pic 37.
 # Text feature is stable across all the data sets
 # (test, train, cross validation)
@@ -893,13 +894,80 @@ print(np.round((len2 / len1) * 100, 3), "% of word of test data appeared in trai
 len1, len2 = get_intersec_text(cv_df)
 print(np.round((len2 / len1) * 100, 3), "% of word of Cross Validation appeared in train data")
 
+
 ########################
 ########################
 # 6. Machine Learning Models
+# 6.1 Data preparation for ML models.
+# Misc. functions for ML models
+
+
+def predict_and_plot_confusion_matrix(train_x, train_y, test_x, test_y, clf):
+    clf.fit(train_x, train_y)
+    sig_clf = CalibratedClassifierCV(clf, method="sigmoid")
+    sig_clf.fit(train_x, train_y)
+    pred_y = sig_clf.predict(test_x)
+
+    # for calculating log_loss we willl provide the array of probabilities belongs to each class
+    print("Log loss :", log_loss(test_y, sig_clf.predict_proba(test_x)))
+    # calculating the number of data points that are misclassified
+    print("Number of mis-classified points :", np.count_nonzero((pred_y - test_y)) / test_y.shape[0])
+    plot_confusion_matrix(test_y, pred_y)
+
+
+def report_log_loss(train_x, train_y, test_x, test_y, clf):
+    clf.fit(train_x, train_y)
+    sig_clf = CalibratedClassifierCV(clf, method="sigmoid")
+    sig_clf.fit(train_x, train_y)
+    sig_clf_probs = sig_clf.predict_proba(test_x)
+    return log_loss(test_y, sig_clf_probs, eps=1e-15)
+
+
+# this function will be used just for naive bayes
+# for the given indices, we will print the name of the features
+# and we will check whether the feature present in the test point text or not
+def get_impfeature_names(indices, text, gene, var, no_features):
+    gene_count_vec = CountVectorizer()
+    var_count_vec = CountVectorizer()
+    text_count_vec = CountVectorizer(min_df=3)
+
+    gene_vec = gene_count_vec.fit(train_df['Gene'])
+    var_vec = var_count_vec.fit(train_df['Variation'])
+    text_vec = text_count_vec.fit(train_df['TEXT'])
+
+    fea1_len = len(gene_vec.get_feature_names())
+    fea2_len = len(var_count_vec.get_feature_names())
+
+    word_present = 0
+    for i, v in enumerate(indices):
+        if (v < fea1_len):
+            word = gene_vec.get_feature_names()[v]
+            yes_no = True if word == gene else False
+            if yes_no:
+                word_present += 1
+                print(i, "Gene feature [{}] present in test data point [{}]".format(word, yes_no))
+        elif (v < fea1_len + fea2_len):
+            word = var_vec.get_feature_names()[v - (fea1_len)]
+            yes_no = True if word == var else False
+            if yes_no:
+                word_present += 1
+                print(i, "variation feature [{}] present in test data point [{}]".format(word, yes_no))
+        else:
+            word = text_vec.get_feature_names()[v - (fea1_len + fea2_len)]
+            yes_no = True if word in text.split() else False
+            if yes_no:
+                word_present += 1
+                print(i, "Text feature [{}] present in test data point [{}]".format(word, yes_no))
+
+    print("Out of the top ", no_features, " features ", word_present, "are present in query point")
+
+# 6.2 Stacking Three types of features
+
+# ##########
+
 
 
 
 ##############
 
 print('< pic 39. >')
-
