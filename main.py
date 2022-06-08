@@ -1269,14 +1269,152 @@ print("the k value for knn is", alpha[best_alpha], "and the nearest neighbours o
       train_y[neighbors[1][0]])
 print("Fequency of nearest points :", Counter(train_y[neighbors[1][0]]))
 
+##############
 # 6.5 Logistic Regression with class balancing
 print('< Logistic Regression with class balancing >')
-# 6.5.1 Hyperparameter tuning
-# 6.5.2 Testing the model with the best hyperparameter
-# 6.5.3 Feature importance
-# correctly classified point
-# Incorrectly classified point
 
+# 6.5.1 Hyperparameter tuning
+# read more about SGDClassifier()
+# at http://scikit-learn.org/stable/modules/generated/sklearn.linear_model.SGDClassifier.html
+# ------------------------------
+# default parameters
+# SGDClassifier(loss=’hinge’, penalty=’l2’, alpha=0.0001, l1_ratio=0.15, fit_intercept=True, max_iter=None, tol=None,
+# shuffle=True, verbose=0, epsilon=0.1, n_jobs=1, random_state=None, learning_rate=’optimal’, eta0=0.0, power_t=0.5,
+# class_weight=None, warm_start=False, average=False, n_iter=None)
+
+# some methods
+# fit(X, y[, coef_init, intercept_init, …])	Fit linear model with Stochastic Gradient Descent.
+# predict(X)	Predict class labels for samples in X.
+
+# -------------------------------
+# video link: https://www.appliedaicourse.com/course/applied-ai-course-online/lessons/geometric-intuition-1/
+# ------------------------------
+
+
+# find more about CalibratedClassifierCV here
+# at http://scikit-learn.org/stable/modules/generated/sklearn.calibration.CalibratedClassifierCV.html
+# ----------------------------
+# default parameters
+# sklearn.calibration.CalibratedClassifierCV(base_estimator=None, method=’sigmoid’, cv=3)
+#
+# some methods of CalibratedClassifierCV()
+# fit(X, y[, sample_weight])	Fit the calibrated model
+# get_params([deep])	Get parameters for this estimator.
+# predict(X)	Predict the target of new samples.
+# predict_proba(X)	Posterior probabilities of classification
+# -------------------------------------
+
+alpha = [10 ** x for x in range(-6, 3)]
+cv_log_error_array = []
+for i in alpha:
+    print("for alpha =", i)
+    clf = SGDClassifier(class_weight='balanced', alpha=i, penalty='l2', loss='log', random_state=42)
+    clf.fit(train_x_onehotCoding, train_y)
+    sig_clf = CalibratedClassifierCV(clf, method="sigmoid")
+    sig_clf.fit(train_x_onehotCoding, train_y)
+    sig_clf_probs = sig_clf.predict_proba(cv_x_onehotCoding)
+    cv_log_error_array.append(log_loss(cv_y, sig_clf_probs, labels=clf.classes_, eps=1e-15))
+    # to avoid rounding error while multiplying probabilites we use log-probability estimates
+    print("Log Loss :", log_loss(cv_y, sig_clf_probs))
+
+fig, ax = plt.subplots()
+ax.plot(alpha, cv_log_error_array, c='g')
+for i, txt in enumerate(np.round(cv_log_error_array, 3)):
+    ax.annotate((alpha[i], str(txt)), (alpha[i], cv_log_error_array[i]))
+plt.grid()
+plt.title("Cross Validation Error for each alpha")
+plt.xlabel("Alpha i's")
+plt.ylabel("Error measure")
+plt.show()
+
+best_alpha = np.argmin(cv_log_error_array)
+clf = SGDClassifier(class_weight='balanced', alpha=alpha[best_alpha], penalty='l2', loss='log', random_state=42)
+clf.fit(train_x_onehotCoding, train_y)
+sig_clf = CalibratedClassifierCV(clf, method="sigmoid")
+sig_clf.fit(train_x_onehotCoding, train_y)
+
+predict_y = sig_clf.predict_proba(train_x_onehotCoding)
+print('For values of best alpha = ', alpha[best_alpha], "The train log loss is:",
+      log_loss(y_train, predict_y, labels=clf.classes_, eps=1e-15))
+predict_y = sig_clf.predict_proba(cv_x_onehotCoding)
+print('For values of best alpha = ', alpha[best_alpha], "The cross validation log loss is:",
+      log_loss(y_cv, predict_y, labels=clf.classes_, eps=1e-15))
+predict_y = sig_clf.predict_proba(test_x_onehotCoding)
+print('For values of best alpha = ', alpha[best_alpha], "The test log loss is:",
+      log_loss(y_test, predict_y, labels=clf.classes_, eps=1e-15))
+
+# 6.5.2 Testing the model with the best hyperparameter
+# read more about SGDClassifier()
+# at http://scikit-learn.org/stable/modules/generated/sklearn.linear_model.SGDClassifier.html
+# ------------------------------
+# default parameters
+# SGDClassifier(loss=’hinge’, penalty=’l2’, alpha=0.0001, l1_ratio=0.15, fit_intercept=True, max_iter=None, tol=None,
+# shuffle=True, verbose=0, epsilon=0.1, n_jobs=1, random_state=None, learning_rate=’optimal’, eta0=0.0, power_t=0.5,
+# class_weight=None, warm_start=False, average=False, n_iter=None)
+
+# some methods
+# fit(X, y[, coef_init, intercept_init, …])	Fit linear model with Stochastic Gradient Descent.
+# predict(X)	Predict class labels for samples in X.
+
+# -------------------------------
+# video link:
+# https://www.appliedaicourse.com/course/applied-ai-course-online/lessons/geometric-intuition-1/
+# ------------------------------
+clf = SGDClassifier(class_weight='balanced', alpha=alpha[best_alpha], penalty='l2', loss='log', random_state=42)
+predict_and_plot_confusion_matrix(train_x_onehotCoding, train_y, cv_x_onehotCoding, cv_y, clf)
+
+
+# 6.5.3 Feature importance
+def get_imp_feature_names(text, indices, removed_ind=[]):
+    word_present = 0
+    tabulte_list = []
+    incresingorder_ind = 0
+    for i in indices:
+        if i < train_gene_feature_onehotCoding.shape[1]:
+            tabulte_list.append([incresingorder_ind, "Gene", "Yes"])
+        elif i < 18:
+            tabulte_list.append([incresingorder_ind, "Variation", "Yes"])
+        if ((i > 17) & (i not in removed_ind)):
+            word = train_text_features[i]
+            yes_no = True if word in text.split() else False
+            if yes_no:
+                word_present += 1
+            tabulte_list.append([incresingorder_ind, train_text_features[i], yes_no])
+        incresingorder_ind += 1
+    print(word_present, "most importent features are present in our query point")
+    print("-" * 50)
+    print("The features that are most importent of the ", predicted_cls[0], " class:")
+    print(tabulate(tabulte_list, headers=["Index", 'Feature name', 'Present or Not']))
+
+
+# correctly classified point
+# from tabulate import tabulate
+clf = SGDClassifier(class_weight='balanced', alpha=alpha[best_alpha], penalty='l2', loss='log', random_state=42)
+clf.fit(train_x_onehotCoding, train_y)
+test_point_index = 1
+no_feature = 500
+predicted_cls = sig_clf.predict(test_x_onehotCoding[test_point_index])
+print("Predicted Class :", predicted_cls[0])
+print("Predicted Class Probabilities:", np.round(sig_clf.predict_proba(test_x_onehotCoding[test_point_index]), 4))
+print("Actual Class :", test_y[test_point_index])
+indices = np.argsort(abs(-clf.coef_))[predicted_cls - 1][:, :no_feature]
+print("-" * 50)
+get_impfeature_names(indices[0], test_df['TEXT'].iloc[test_point_index], test_df['Gene'].iloc[test_point_index],
+                     test_df['Variation'].iloc[test_point_index], no_feature)
+
+# Incorrectly classified point
+test_point_index = 100
+no_feature = 500
+predicted_cls = sig_clf.predict(test_x_onehotCoding[test_point_index])
+print("Predicted Class :", predicted_cls[0])
+print("Predicted Class Probabilities:", np.round(sig_clf.predict_proba(test_x_onehotCoding[test_point_index]), 4))
+print("Actual Class :", test_y[test_point_index])
+indices = np.argsort(abs(-clf.coef_))[predicted_cls - 1][:, :no_feature]
+print("-" * 50)
+get_impfeature_names(indices[0], test_df['TEXT'].iloc[test_point_index], test_df['Gene'].iloc[test_point_index],
+                     test_df['Variation'].iloc[test_point_index], no_feature)
+
+##############
 # 6.6 Logistic Regression without class balancing
 print('< Logistic Regression without class balancing >')
 # 6.6.1 Hyperparameter tuning
@@ -1285,6 +1423,7 @@ print('< Logistic Regression without class balancing >')
 # correctly classified point
 # Incorrectly classified point
 
+##############
 # 6.7 Linear Support Vector Machines
 print('< Linear Support Vector Machines >')
 # 6.7.1 Hyperparameter tuning
@@ -1293,6 +1432,7 @@ print('< Linear Support Vector Machines >')
 # correctly classified point
 # Incorrectly classified point
 
+##############
 # 6.8 Random Forest Classifier(One hot Encoding)
 print('< Random Forest Classifier(One hot Encoding) >')
 # 6.8.1 Hyperparameter tuning(One hot Encoding)
@@ -1301,6 +1441,7 @@ print('< Random Forest Classifier(One hot Encoding) >')
 # correctly classified point
 # Incorrectly classified point
 
+##############
 # 6.9 Random Forest Classifier(Response coding)
 print('< Random Forest Classifier(Response coding) >')
 # 6.9.1 Hyperparameter tuning(Response coding)
@@ -1309,14 +1450,12 @@ print('< Random Forest Classifier(Response coding) >')
 # correctly classified point
 # Incorrectly classified point
 
+##############
 print('< Model Stacking >')
 # 6.10 Model Stacking
 # 6.10.1 Hyperparameter tuning
 # 6.10.2 Testing the model with the best hyperparameter
 # 6.10.3 Maximum voting classifier
-
-
-# ##########
 
 
 ##############
