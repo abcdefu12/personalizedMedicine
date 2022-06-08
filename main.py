@@ -1569,19 +1569,19 @@ get_impfeature_names(indices[0], test_df['TEXT'].iloc[test_point_index], test_df
 print('< Random Forest Classifier(One hot Encoding) >')
 
 # 6.8.1 Hyperparameter tuning(One hot Encoding)
-alpha = [100,200,500,1000,2000]
+alpha = [100, 200, 500, 1000, 2000]
 max_depth = [5, 10]
 cv_log_error_array = []
 for i in alpha:
     for j in max_depth:
-        print("for n_estimators =", i,"and max depth = ", j)
+        print("for n_estimators =", i, "and max depth = ", j)
         clf = RandomForestClassifier(n_estimators=i, criterion='gini', max_depth=j, random_state=42, n_jobs=-1)
         clf.fit(train_x_onehotCoding, train_y)
         sig_clf = CalibratedClassifierCV(clf, method="sigmoid")
         sig_clf.fit(train_x_onehotCoding, train_y)
         sig_clf_probs = sig_clf.predict_proba(cv_x_onehotCoding)
         cv_log_error_array.append(log_loss(cv_y, sig_clf_probs, labels=clf.classes_, eps=1e-15))
-        print("Log Loss :",log_loss(cv_y, sig_clf_probs))
+        print("Log Loss :", log_loss(cv_y, sig_clf_probs))
 
 '''fig, ax = plt.subplots()
 features = np.dot(np.array(alpha)[:,None],np.array(max_depth)[None]).ravel()
@@ -1653,11 +1653,98 @@ get_impfeature_names(indices[:no_feature], test_df['TEXT'].iloc[test_point_index
 ##############
 # 6.9 Random Forest Classifier(Response coding)
 print('< Random Forest Classifier(Response coding) >')
+
 # 6.9.1 Hyperparameter tuning(Response coding)
+alpha = [10, 50, 100, 200, 500, 1000]
+max_depth = [2, 3, 5, 10]
+cv_log_error_array = []
+for i in alpha:
+    for j in max_depth:
+        print("for n_estimators =", i, "and max depth = ", j)
+        clf = RandomForestClassifier(n_estimators=i, criterion='gini', max_depth=j, random_state=42, n_jobs=-1)
+        clf.fit(train_x_responseCoding, train_y)
+        sig_clf = CalibratedClassifierCV(clf, method="sigmoid")
+        sig_clf.fit(train_x_responseCoding, train_y)
+        sig_clf_probs = sig_clf.predict_proba(cv_x_responseCoding)
+        cv_log_error_array.append(log_loss(cv_y, sig_clf_probs, labels=clf.classes_, eps=1e-15))
+        print("Log Loss :", log_loss(cv_y, sig_clf_probs))
+'''
+fig, ax = plt.subplots()
+features = np.dot(np.array(alpha)[:,None],np.array(max_depth)[None]).ravel()
+ax.plot(features, cv_log_error_array,c='g')
+for i, txt in enumerate(np.round(cv_log_error_array,3)):
+    ax.annotate((alpha[int(i/4)],max_depth[int(i%4)],str(txt)), (features[i],cv_log_error_array[i]))
+plt.grid()
+plt.title("Cross Validation Error for each alpha")
+plt.xlabel("Alpha i's")
+plt.ylabel("Error measure")
+plt.show()
+'''
+
+best_alpha = np.argmin(cv_log_error_array)
+clf = RandomForestClassifier(n_estimators=alpha[int(best_alpha / 4)], criterion='gini',
+                             max_depth=max_depth[int(best_alpha % 4)], random_state=42, n_jobs=-1)
+clf.fit(train_x_responseCoding, train_y)
+sig_clf = CalibratedClassifierCV(clf, method="sigmoid")
+sig_clf.fit(train_x_responseCoding, train_y)
+
+predict_y = sig_clf.predict_proba(train_x_responseCoding)
+print('For values of best alpha = ', alpha[int(best_alpha / 4)], "The train log loss is:",
+      log_loss(y_train, predict_y, labels=clf.classes_, eps=1e-15))
+predict_y = sig_clf.predict_proba(cv_x_responseCoding)
+print('For values of best alpha = ', alpha[int(best_alpha / 4)], "The cross validation log loss is:",
+      log_loss(y_cv, predict_y, labels=clf.classes_, eps=1e-15))
+predict_y = sig_clf.predict_proba(test_x_responseCoding)
+print('For values of best alpha = ', alpha[int(best_alpha / 4)], "The test log loss is:",
+      log_loss(y_test, predict_y, labels=clf.classes_, eps=1e-15))
+
 # 6.9.2 Testing the model with the best hyperparameter(Response coding)
+clf = RandomForestClassifier(max_depth=max_depth[int(best_alpha % 4)], n_estimators=alpha[int(best_alpha / 4)],
+                             criterion='gini', max_features='auto', random_state=42)
+predict_and_plot_confusion_matrix(train_x_responseCoding, train_y, cv_x_responseCoding, cv_y, clf)
+
 # 6.9.3 Feature importance
+
 # correctly classified point
+clf = RandomForestClassifier(n_estimators=alpha[int(best_alpha / 4)], criterion='gini',
+                             max_depth=max_depth[int(best_alpha % 4)], random_state=42, n_jobs=-1)
+clf.fit(train_x_responseCoding, train_y)
+sig_clf = CalibratedClassifierCV(clf, method="sigmoid")
+sig_clf.fit(train_x_responseCoding, train_y)
+
+test_point_index = 1
+no_feature = 27
+predicted_cls = sig_clf.predict(test_x_responseCoding[test_point_index].reshape(1, -1))
+print("Predicted Class :", predicted_cls[0])
+print("Predicted Class Probabilities:",
+      np.round(sig_clf.predict_proba(test_x_responseCoding[test_point_index].reshape(1, -1)), 4))
+print("Actual Class :", test_y[test_point_index])
+indices = np.argsort(-clf.feature_importances_)
+print("-" * 50)
+for i in indices:
+    if i < 9:
+        print("Gene is important feature")
+    elif i < 18:
+        print("Variation is important feature")
+    else:
+        print("Text is important feature")
+
 # Incorrectly classified point
+test_point_index = 100
+predicted_cls = sig_clf.predict(test_x_responseCoding[test_point_index].reshape(1, -1))
+print("Predicted Class :", predicted_cls[0])
+print("Predicted Class Probabilities:",
+      np.round(sig_clf.predict_proba(test_x_responseCoding[test_point_index].reshape(1, -1)), 4))
+print("Actual Class :", test_y[test_point_index])
+indices = np.argsort(-clf.feature_importances_)
+print("-" * 50)
+for i in indices:
+    if i < 9:
+        print("Gene is important feature")
+    elif i < 18:
+        print("Variation is important feature")
+    else:
+        print("Text is important feature")
 
 ##############
 print('< Model Stacking >')
