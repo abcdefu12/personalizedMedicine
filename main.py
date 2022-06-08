@@ -1146,13 +1146,131 @@ get_impfeature_names(indices[0], test_df['TEXT'].iloc[test_point_index], test_df
                      test_df['Variation'].iloc[test_point_index], no_feature)
 
 # 6.4 KNN model
+print('< KNN model >')
 # K-최근접이웃 알고리즘 머신러닝 모델
 # K nearest neighbor classification
 
-# Hyperparameter tuning
+# 6.4.1 Hyperparameter tuning
+# find more about KNeighborsClassifier() here
+# http://scikit-learn.org/stable/modules/generated/sklearn.neighbors.KNeighborsClassifier.html
+# -------------------------
+# default parameter
+# KNeighborsClassifier(n_neighbors=5, weights=’uniform’, algorithm=’auto’, leaf_size=30, p=2,
+# metric=’minkowski’, metric_params=None, n_jobs=1, **kwargs)
 
+# methods of
+# fit(X, y) : Fit the model using X as training data and y as target values
+# predict(X):Predict the class labels for the provided data
+# predict_proba(X):Return probability estimates for the test data X.
+# -------------------------------------
+# video link:
+# https://www.appliedaicourse.com/course/applied-ai-course-online/lessons/k-nearest-neighbors-geometric-intuition-with-a-toy-example-1/
+# -------------------------------------
+
+
+# find more about CalibratedClassifierCV here
+# at http://scikit-learn.org/stable/modules/generated/sklearn.calibration.CalibratedClassifierCV.html
+# ----------------------------
+# default parameters
+# sklearn.calibration.CalibratedClassifierCV(base_estimator=None, method=’sigmoid’, cv=3)
+#
+# some methods of CalibratedClassifierCV()
+# fit(X, y[, sample_weight])	Fit the calibrated model
+# get_params([deep])	Get parameters for this estimator.
+# predict(X)	Predict the target of new samples.
+# predict_proba(X)	Posterior probabilities of classification
+
+
+alpha = [5, 11, 15, 21, 31, 41, 51, 99]
+cv_log_error_array = []
+for i in alpha:
+    print("for alpha =", i)
+    clf = KNeighborsClassifier(n_neighbors=i)
+    clf.fit(train_x_responseCoding, train_y)
+    sig_clf = CalibratedClassifierCV(clf, method="sigmoid")
+    sig_clf.fit(train_x_responseCoding, train_y)
+    sig_clf_probs = sig_clf.predict_proba(cv_x_responseCoding)
+    cv_log_error_array.append(log_loss(cv_y, sig_clf_probs, labels=clf.classes_, eps=1e-15))
+    # to avoid rounding error while multiplying probabilites we use log-probability estimates
+    print("Log Loss :", log_loss(cv_y, sig_clf_probs))
+
+fig, ax = plt.subplots()
+ax.plot(alpha, cv_log_error_array, c='g')
+for i, txt in enumerate(np.round(cv_log_error_array, 3)):
+    ax.annotate((alpha[i], str(txt)), (alpha[i], cv_log_error_array[i]))
+plt.grid()
+plt.title("Cross Validation Error for each alpha")
+plt.xlabel("Alpha i's")
+plt.ylabel("Error measure")
+plt.show()
+
+best_alpha = np.argmin(cv_log_error_array)
+clf = KNeighborsClassifier(n_neighbors=alpha[best_alpha])
+clf.fit(train_x_responseCoding, train_y)
+sig_clf = CalibratedClassifierCV(clf, method="sigmoid")
+sig_clf.fit(train_x_responseCoding, train_y)
+
+predict_y = sig_clf.predict_proba(train_x_responseCoding)
+print('For values of best alpha = ', alpha[best_alpha], "The train log loss is:",
+      log_loss(y_train, predict_y, labels=clf.classes_, eps=1e-15))
+predict_y = sig_clf.predict_proba(cv_x_responseCoding)
+print('For values of best alpha = ', alpha[best_alpha], "The cross validation log loss is:",
+      log_loss(y_cv, predict_y, labels=clf.classes_, eps=1e-15))
+predict_y = sig_clf.predict_proba(test_x_responseCoding)
+print('For values of best alpha = ', alpha[best_alpha], "The test log loss is:",
+      log_loss(y_test, predict_y, labels=clf.classes_, eps=1e-15))
+
+# 6.4.2 Testing the model with the best hyperparameter
+# find more about KNeighborsClassifier() here
+# http://scikit-learn.org/stable/modules/generated/sklearn.neighbors.KNeighborsClassifier.html
+# -------------------------
+# default parameter
+# KNeighborsClassifier(n_neighbors=5, weights=’uniform’, algorithm=’auto’, leaf_size=30, p=2,
+# metric=’minkowski’, metric_params=None, n_jobs=1, **kwargs)
+
+# methods of
+# fit(X, y) : Fit the model using X as training data and y as target values
+# predict(X):Predict the class labels for the provided data
+# predict_proba(X):Return probability estimates for the test data X.
+# -------------------------------------
+# video link:
+# https://www.appliedaicourse.com/course/applied-ai-course-online/lessons/k-nearest-neighbors-geometric-intuition-with-a-toy-example-1/
+# -------------------------------------
+clf = KNeighborsClassifier(n_neighbors=alpha[best_alpha])
+predict_and_plot_confusion_matrix(train_x_responseCoding, train_y, cv_x_responseCoding, cv_y, clf)
+
+# 6.4.3 Sample Query point -1
+clf = KNeighborsClassifier(n_neighbors=alpha[best_alpha])
+clf.fit(train_x_responseCoding, train_y)
+sig_clf = CalibratedClassifierCV(clf, method="sigmoid")
+sig_clf.fit(train_x_responseCoding, train_y)
+
+test_point_index = 1
+predicted_cls = sig_clf.predict(test_x_responseCoding[0].reshape(1, -1))
+print("Predicted Class :", predicted_cls[0])
+print("Actual Class :", test_y[test_point_index])
+neighbors = clf.kneighbors(test_x_responseCoding[test_point_index].reshape(1, -1), alpha[best_alpha])
+print("The ", alpha[best_alpha], " nearest neighbours of the test points belongs to classes", train_y[neighbors[1][0]])
+print("Fequency of nearest points :", Counter(train_y[neighbors[1][0]]))
+
+# 6.4.4 Sample Query point -2
+clf = KNeighborsClassifier(n_neighbors=alpha[best_alpha])
+clf.fit(train_x_responseCoding, train_y)
+sig_clf = CalibratedClassifierCV(clf, method="sigmoid")
+sig_clf.fit(train_x_responseCoding, train_y)
+
+test_point_index = 100
+
+predicted_cls = sig_clf.predict(test_x_responseCoding[test_point_index].reshape(1, -1))
+print("Predicted Class :", predicted_cls[0])
+print("Actual Class :", test_y[test_point_index])
+neighbors = clf.kneighbors(test_x_responseCoding[test_point_index].reshape(1, -1), alpha[best_alpha])
+print("the k value for knn is", alpha[best_alpha], "and the nearest neighbours of the test points belongs to classes",
+      train_y[neighbors[1][0]])
+print("Fequency of nearest points :", Counter(train_y[neighbors[1][0]]))
 
 # 6.5 Logistic Regression with class balancing
+print('< Logistic Regression with class balancing >')
 # 6.5.1 Hyperparameter tuning
 # 6.5.2 Testing the model with the best hyperparameter
 # 6.5.3 Feature importance
@@ -1160,6 +1278,7 @@ get_impfeature_names(indices[0], test_df['TEXT'].iloc[test_point_index], test_df
 # Incorrectly classified point
 
 # 6.6 Logistic Regression without class balancing
+print('< Logistic Regression without class balancing >')
 # 6.6.1 Hyperparameter tuning
 # 6.6.2 Testing the model with the best hyperparameter
 # 6.6.3 Feature importance
@@ -1167,6 +1286,7 @@ get_impfeature_names(indices[0], test_df['TEXT'].iloc[test_point_index], test_df
 # Incorrectly classified point
 
 # 6.7 Linear Support Vector Machines
+print('< Linear Support Vector Machines >')
 # 6.7.1 Hyperparameter tuning
 # 6.7.2 Testing the model with the best hyperparameter
 # 6.7.3 Feature importance
@@ -1174,6 +1294,7 @@ get_impfeature_names(indices[0], test_df['TEXT'].iloc[test_point_index], test_df
 # Incorrectly classified point
 
 # 6.8 Random Forest Classifier(One hot Encoding)
+print('< Random Forest Classifier(One hot Encoding) >')
 # 6.8.1 Hyperparameter tuning(One hot Encoding)
 # 6.8.2 Testing the model with the best hyperparameter(One hot Encoding)
 # 6.8.3 Feature importance
@@ -1181,12 +1302,14 @@ get_impfeature_names(indices[0], test_df['TEXT'].iloc[test_point_index], test_df
 # Incorrectly classified point
 
 # 6.9 Random Forest Classifier(Response coding)
+print('< Random Forest Classifier(Response coding) >')
 # 6.9.1 Hyperparameter tuning(Response coding)
 # 6.9.2 Testing the model with the best hyperparameter(Response coding)
 # 6.9.3 Feature importance
 # correctly classified point
 # Incorrectly classified point
 
+print('< Model Stacking >')
 # 6.10 Model Stacking
 # 6.10.1 Hyperparameter tuning
 # 6.10.2 Testing the model with the best hyperparameter
