@@ -1004,16 +1004,125 @@ print("(number of data points * number of features) in train data = ", train_x_r
 print("(number of data points * number of features) in test data = ", test_x_responseCoding.shape)
 print("(number of data points * number of features) in cross validation data =", cv_x_responseCoding.shape)
 
+# 6.3 BaseLine Model
+# Naive Bayes
+
+# Hyperparameter tuning
+# find more about Multinomial Naive base function here
+# http://scikit-learn.org/stable/modules/generated/sklearn.naive_bayes.MultinomialNB.html
+# -------------------------
+# default parameters
+# sklearn.naive_bayes.MultinomialNB(alpha=1.0, fit_prior=True, class_prior=None)
+
+# some of the methods of MultinomialNB()
+# fit(X, y[, sample_weight])	Fit Naive Bayes classifier according to X, y
+# predict(X)	Perform classification on an array of test vectors X.
+# predict_log_proba(X)	Return log-probability estimates for the test vector X.
+# -----------------------
+# video link: https://www.appliedaicourse.com/course/applied-ai-course-online/lessons/naive-bayes-algorithm-1/
+# -----------------------
 
 
+# find more about CalibratedClassifierCV here
+# at http://scikit-learn.org/stable/modules/generated/sklearn.calibration.CalibratedClassifierCV.html
+# ----------------------------
+# default parameters
+# sklearn.calibration.CalibratedClassifierCV(base_estimator=None, method=’sigmoid’, cv=3)
+#
+# some methods of CalibratedClassifierCV()
+# fit(X, y[, sample_weight])	Fit the calibrated model
+# get_params([deep])	Get parameters for this estimator.
+# predict(X)	Predict the target of new samples.
+# predict_proba(X)	Posterior probabilities of classification
+# ----------------------------
+# video link: https://www.appliedaicourse.com/course/applied-ai-course-online/lessons/naive-bayes-algorithm-1/
+# -----------------------
+
+print('< pic 40. alpha values>')
+print('< pic 41. cross validation error for each alpha>')
+
+alpha = [0.00001, 0.0001, 0.001, 0.1, 1, 10, 100, 1000]
+cv_log_error_array = []
+for i in alpha:
+    print("for alpha =", i)
+    clf = MultinomialNB(alpha=i)
+    clf.fit(train_x_onehotCoding, train_y)
+    sig_clf = CalibratedClassifierCV(clf, method="sigmoid")
+    sig_clf.fit(train_x_onehotCoding, train_y)
+    sig_clf_probs = sig_clf.predict_proba(cv_x_onehotCoding)
+    cv_log_error_array.append(log_loss(cv_y, sig_clf_probs, labels=clf.classes_, eps=1e-15))
+    # to avoid rounding error while multiplying probabilites we use log-probability estimates
+    print("Log Loss :", log_loss(cv_y, sig_clf_probs))
+
+fig, ax = plt.subplots()
+ax.plot(np.log10(alpha), cv_log_error_array, c='g')
+for i, txt in enumerate(np.round(cv_log_error_array, 3)):
+    ax.annotate((alpha[i], str(txt)), (np.log10(alpha[i]), cv_log_error_array[i]))
+plt.grid()
+plt.xticks(np.log10(alpha))
+plt.title("Cross Validation Error for each alpha")
+plt.xlabel("Alpha i's")
+plt.ylabel("Error measure")
+plt.show()
+
+best_alpha = np.argmin(cv_log_error_array)
+clf = MultinomialNB(alpha=alpha[best_alpha])
+clf.fit(train_x_onehotCoding, train_y)
+sig_clf = CalibratedClassifierCV(clf, method="sigmoid")
+sig_clf.fit(train_x_onehotCoding, train_y)
+
+predict_y = sig_clf.predict_proba(train_x_onehotCoding)
+print('For values of best alpha = ', alpha[best_alpha], "The train log loss is:",
+      log_loss(y_train, predict_y, labels=clf.classes_, eps=1e-15))
+predict_y = sig_clf.predict_proba(cv_x_onehotCoding)
+print('For values of best alpha = ', alpha[best_alpha], "The cross validation log loss is:",
+      log_loss(y_cv, predict_y, labels=clf.classes_, eps=1e-15))
+predict_y = sig_clf.predict_proba(test_x_onehotCoding)
+print('For values of best alpha = ', alpha[best_alpha], "The test log loss is:",
+      log_loss(y_test, predict_y, labels=clf.classes_, eps=1e-15))
+
+print('< pic 42. confusion & precision & recall matrix>')
+# find more about Multinomial Naive base function here
+# http://scikit-learn.org/stable/modules/generated/sklearn.naive_bayes.MultinomialNB.html
+# -------------------------
+# default paramters
+# sklearn.naive_bayes.MultinomialNB(alpha=1.0, fit_prior=True, class_prior=None)
+
+# some of methods of MultinomialNB()
+# fit(X, y[, sample_weight])	Fit Naive Bayes classifier according to X, y
+# predict(X)	Perform classification on an array of test vectors X.
+# predict_log_proba(X)	Return log-probability estimates for the test vector X.
+# -----------------------
+# video link: https://www.appliedaicourse.com/course/applied-ai-course-online/lessons/naive-bayes-algorithm-1/
+# -----------------------
 
 
+# find more about CalibratedClassifierCV here
+# at http://scikit-learn.org/stable/modules/generated/sklearn.calibration.CalibratedClassifierCV.html
+# ----------------------------
+# default paramters
+# sklearn.calibration.CalibratedClassifierCV(base_estimator=None, method=’sigmoid’, cv=3)
+#
+# some of the methods of CalibratedClassifierCV()
+# fit(X, y[, sample_weight])	Fit the calibrated model
+# get_params([deep])	Get parameters for this estimator.
+# predict(X)	Predict the target of new samples.
+# predict_proba(X)	Posterior probabilities of classification
+# ----------------------------
 
-
+clf = MultinomialNB(alpha=alpha[best_alpha])
+clf.fit(train_x_onehotCoding, train_y)
+sig_clf = CalibratedClassifierCV(clf, method="sigmoid")
+sig_clf.fit(train_x_onehotCoding, train_y)
+sig_clf_probs = sig_clf.predict_proba(cv_x_onehotCoding)
+# to avoid rounding error while multiplying probabilites we use log-probability estimates
+print("Log Loss :", log_loss(cv_y, sig_clf_probs))
+print("Number of missclassified point :", np.count_nonzero((sig_clf.predict(cv_x_onehotCoding) - cv_y)) / cv_y.shape[0])
+plot_confusion_matrix(cv_y, sig_clf.predict(cv_x_onehotCoding.toarray()))
 
 # ##########
 
 
 ##############
 
-print('< pic 40. >')
+print('< pic 42. >')
