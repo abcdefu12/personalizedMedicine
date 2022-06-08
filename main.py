@@ -1120,9 +1120,40 @@ print("Log Loss :", log_loss(cv_y, sig_clf_probs))
 print("Number of missclassified point :", np.count_nonzero((sig_clf.predict(cv_x_onehotCoding) - cv_y)) / cv_y.shape[0])
 plot_confusion_matrix(cv_y, sig_clf.predict(cv_x_onehotCoding.toarray()))
 
+print('< pic 42. feature importance>')
+# Feature importance, correctly classified point
+test_point_index = 1
+no_feature = 100
+predicted_cls = sig_clf.predict(test_x_onehotCoding[test_point_index])
+print("Predicted Class :", predicted_cls[0])
+print("Predicted Class Probabilities:", np.round(sig_clf.predict_proba(test_x_onehotCoding[test_point_index]), 4))
+print("Actual Class :", test_y[test_point_index])
+indices = np.argsort(abs(-clf.coef_))[predicted_cls - 1][:, :no_feature]
+print("-" * 50)
+get_impfeature_names(indices[0], test_df['TEXT'].iloc[test_point_index], test_df['Gene'].iloc[test_point_index],
+                     test_df['Variation'].iloc[test_point_index], no_feature)
+
+# Feature importance, Incorrectly classified point
+test_point_index = 100
+no_feature = 100
+predicted_cls = sig_clf.predict(test_x_onehotCoding[test_point_index])
+print("Predicted Class :", predicted_cls[0])
+print("Predicted Class Probabilities:", np.round(sig_clf.predict_proba(test_x_onehotCoding[test_point_index]), 4))
+print("Actual Class :", test_y[test_point_index])
+indices = np.argsort(abs(-clf.coef_))[predicted_cls - 1][:, :no_feature]
+print("-" * 50)
+get_impfeature_names(indices[0], test_df['TEXT'].iloc[test_point_index], test_df['Gene'].iloc[test_point_index],
+                     test_df['Variation'].iloc[test_point_index], no_feature)
+
+# 6.4 KNN model
+# K-최근접이웃 알고리즘 모델
+# K nearest neighbor calssification
+
+# Hyperparameter tuning
+
 # ##########
 
 
 ##############
 
-print('< pic 42. >')
+print('< pic 43. >')
