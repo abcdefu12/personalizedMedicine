@@ -1146,10 +1146,52 @@ get_impfeature_names(indices[0], test_df['TEXT'].iloc[test_point_index], test_df
                      test_df['Variation'].iloc[test_point_index], no_feature)
 
 # 6.4 KNN model
-# K-최근접이웃 알고리즘 모델
-# K nearest neighbor calssification
+# K-최근접이웃 알고리즘 머신러닝 모델
+# K nearest neighbor classification
 
 # Hyperparameter tuning
+
+
+# 6.5 Logistic Regression with class balancing
+# 6.5.1 Hyperparameter tuning
+# 6.5.2 Testing the model with the best hyperparameter
+# 6.5.3 Feature importance
+# correctly classified point
+# Incorrectly classified point
+
+# 6.6 Logistic Regression without class balancing
+# 6.6.1 Hyperparameter tuning
+# 6.6.2 Testing the model with the best hyperparameter
+# 6.6.3 Feature importance
+# correctly classified point
+# Incorrectly classified point
+
+# 6.7 Linear Support Vector Machines
+# 6.7.1 Hyperparameter tuning
+# 6.7.2 Testing the model with the best hyperparameter
+# 6.7.3 Feature importance
+# correctly classified point
+# Incorrectly classified point
+
+# 6.8 Random Forest Classifier(One hot Encoding)
+# 6.8.1 Hyperparameter tuning(One hot Encoding)
+# 6.8.2 Testing the model with the best hyperparameter(One hot Encoding)
+# 6.8.3 Feature importance
+# correctly classified point
+# Incorrectly classified point
+
+# 6.9 Random Forest Classifier(Response coding)
+# 6.9.1 Hyperparameter tuning(Response coding)
+# 6.9.2 Testing the model with the best hyperparameter(Response coding)
+# 6.9.3 Feature importance
+# correctly classified point
+# Incorrectly classified point
+
+# 6.10 Model Stacking
+# 6.10.1 Hyperparameter tuning
+# 6.10.2 Testing the model with the best hyperparameter
+# 6.10.3 Maximum voting classifier
+
 
 # ##########
 
