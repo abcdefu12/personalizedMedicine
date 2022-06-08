@@ -1747,13 +1747,130 @@ for i in indices:
         print("Text is important feature")
 
 ##############
-print('< Model Stacking >')
 # 6.10 Model Stacking
-# 6.10.1 Hyperparameter tuning
-# 6.10.2 Testing the model with the best hyperparameter
-# 6.10.3 Maximum voting classifier
+print('< Model Stacking >')
 
+# 6.10.1 Hyperparameter tuning
+# read more about SGDClassifier() at
+# http://scikit-learn.org/stable/modules/generated/sklearn.linear_model.SGDClassifier.html
+# ------------------------------
+# default parameters
+# SGDClassifier(loss=’hinge’, penalty=’l2’, alpha=0.0001, l1_ratio=0.15, fit_intercept=True, max_iter=None, tol=None,
+# shuffle=True, verbose=0, epsilon=0.1, n_jobs=1, random_state=None, learning_rate=’optimal’, eta0=0.0, power_t=0.5,
+# class_weight=None, warm_start=False, average=False, n_iter=None)
+
+# some methods
+# fit(X, y[, coef_init, intercept_init, …])	Fit linear model with Stochastic Gradient Descent.
+# predict(X)	Predict class labels for samples in X.
+
+# -------------------------------
+# video link:
+# https://www.appliedaicourse.com/course/applied-ai-course-online/lessons/geometric-intuition-1/
+# ------------------------------
+
+
+# read more about support vector machines with linear kernals here
+# http://scikit-learn.org/stable/modules/generated/sklearn.svm.SVC.html
+# --------------------------------
+# default parameters
+# SVC(C=1.0, kernel=’rbf’, degree=3, gamma=’auto’, coef0=0.0, shrinking=True, probability=False, tol=0.001,
+# cache_size=200, class_weight=None, verbose=False, max_iter=-1, decision_function_shape=’ovr’, random_state=None)
+
+# Some of methods of SVM()
+# fit(X, y, [sample_weight])	Fit the SVM model according to the given training data.
+# predict(X)	Perform classification on samples in X.
+# --------------------------------
+# video link:
+# https://www.appliedaicourse.com/course/applied-ai-course-online/lessons/mathematical-derivation-copy-8/
+# --------------------------------
+
+
+# read more about support vector machines with linear kernals here
+# http://scikit-learn.org/stable/modules/generated/sklearn.ensemble.RandomForestClassifier.html
+# --------------------------------
+# default parameters
+# sklearn.ensemble.RandomForestClassifier(n_estimators=10, criterion=’gini’, max_depth=None, min_samples_split=2,
+# min_samples_leaf=1, min_weight_fraction_leaf=0.0, max_features=’auto’, max_leaf_nodes=None, min_impurity_decrease=0.0,
+# min_impurity_split=None, bootstrap=True, oob_score=False, n_jobs=1, random_state=None, verbose=0, warm_start=False,
+# class_weight=None)
+
+# Some methods of RandomForestClassifier()
+# fit(X, y, [sample_weight])	Fit the SVM model according to the given training data.
+# predict(X)	Perform classification on samples in X.
+# predict_proba (X)	Perform classification on samples in X.
+
+# some attributes of  RandomForestClassifier()
+# feature_importances_ : array of shape = [n_features]
+# The feature importances (the higher, the more important the feature).
+
+# --------------------------------
+# video link:
+# https://www.appliedaicourse.com/course/applied-ai-course-online/lessons/random-forest-and-their-construction-2/
+# --------------------------------
+
+
+clf1 = SGDClassifier(alpha=0.001, penalty='l2', loss='log', class_weight='balanced', random_state=0)
+clf1.fit(train_x_onehotCoding, train_y)
+sig_clf1 = CalibratedClassifierCV(clf1, method="sigmoid")
+
+clf2 = SGDClassifier(alpha=1, penalty='l2', loss='hinge', class_weight='balanced', random_state=0)
+clf2.fit(train_x_onehotCoding, train_y)
+sig_clf2 = CalibratedClassifierCV(clf2, method="sigmoid")
+
+clf3 = MultinomialNB(alpha=0.001)
+clf3.fit(train_x_onehotCoding, train_y)
+sig_clf3 = CalibratedClassifierCV(clf3, method="sigmoid")
+
+sig_clf1.fit(train_x_onehotCoding, train_y)
+print("Logistic Regression :  Log Loss: %0.2f" % (log_loss(cv_y, sig_clf1.predict_proba(cv_x_onehotCoding))))
+sig_clf2.fit(train_x_onehotCoding, train_y)
+print("Support vector machines : Log Loss: %0.2f" % (log_loss(cv_y, sig_clf2.predict_proba(cv_x_onehotCoding))))
+sig_clf3.fit(train_x_onehotCoding, train_y)
+print("Naive Bayes : Log Loss: %0.2f" % (log_loss(cv_y, sig_clf3.predict_proba(cv_x_onehotCoding))))
+print("-" * 50)
+alpha = [0.0001, 0.001, 0.01, 0.1, 1, 10]
+best_alpha = 999
+for i in alpha:
+    lr = LogisticRegression(C=i)
+    sclf = StackingClassifier(classifiers=[sig_clf1, sig_clf2, sig_clf3], meta_classifier=lr, use_probas=True)
+    sclf.fit(train_x_onehotCoding, train_y)
+    print("Stacking Classifer : for the value of alpha: %f Log Loss: %0.3f" % (
+    i, log_loss(cv_y, sclf.predict_proba(cv_x_onehotCoding))))
+    log_error = log_loss(cv_y, sclf.predict_proba(cv_x_onehotCoding))
+    if best_alpha > log_error:
+        best_alpha = log_error
+
+# 6.10.2 Testing the model with the best hyperparameter
+lr = LogisticRegression(C=0.1)
+sclf = StackingClassifier(classifiers=[sig_clf1, sig_clf2, sig_clf3], meta_classifier=lr, use_probas=True)
+sclf.fit(train_x_onehotCoding, train_y)
+
+log_error = log_loss(train_y, sclf.predict_proba(train_x_onehotCoding))
+print("Log loss (train) on the stacking classifier :", log_error)
+
+log_error = log_loss(cv_y, sclf.predict_proba(cv_x_onehotCoding))
+print("Log loss (CV) on the stacking classifier :", log_error)
+
+log_error = log_loss(test_y, sclf.predict_proba(test_x_onehotCoding))
+print("Log loss (test) on the stacking classifier :", log_error)
+
+print("Number of missclassified point :",
+      np.count_nonzero((sclf.predict(test_x_onehotCoding) - test_y)) / test_y.shape[0])
+plot_confusion_matrix(test_y=test_y, predict_y=sclf.predict(test_x_onehotCoding))
+
+# 6.10.3 Maximum voting classifier
+# Refer:http://scikit-learn.org/stable/modules/generated/sklearn.ensemble.VotingClassifier.html
+from sklearn.ensemble import VotingClassifier
+
+vclf = VotingClassifier(estimators=[('lr', sig_clf1), ('svc', sig_clf2), ('rf', sig_clf3)], voting='soft')
+vclf.fit(train_x_onehotCoding, train_y)
+print("Log loss (train) on the VotingClassifier :", log_loss(train_y, vclf.predict_proba(train_x_onehotCoding)))
+print("Log loss (CV) on the VotingClassifier :", log_loss(cv_y, vclf.predict_proba(cv_x_onehotCoding)))
+print("Log loss (test) on the VotingClassifier :", log_loss(test_y, vclf.predict_proba(test_x_onehotCoding)))
+print("Number of missclassified point :",
+      np.count_nonzero((vclf.predict(test_x_onehotCoding) - test_y)) / test_y.shape[0])
+plot_confusion_matrix(test_y=test_y, predict_y=vclf.predict(test_x_onehotCoding))
 
 ##############
 
-print('< pic 43. >')
+# print('< pic 43. >')
