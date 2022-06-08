@@ -37,6 +37,22 @@ follow remarks to check code.
 
 <hr/>
 
+### used ml models
+remark: 6.machine learning models
+* base line model (6.3)
+* KNN model (6.4)
+* logistic regression with class balancing (6.5)
+* logistic regression without class balancing (6.6)
+* linear support vector machine (6.7)
+* random forest classifier with one hot encoding (6.8)
+* random forest classifier with response coding (6.9)
+* model stacking (6.10)
+
+
+
+<hr/>
+
+
 ### contents of project
 will be added.
 - background idea
