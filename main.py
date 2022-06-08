@@ -1567,11 +1567,88 @@ get_impfeature_names(indices[0], test_df['TEXT'].iloc[test_point_index], test_df
 ##############
 # 6.8 Random Forest Classifier(One hot Encoding)
 print('< Random Forest Classifier(One hot Encoding) >')
+
 # 6.8.1 Hyperparameter tuning(One hot Encoding)
+alpha = [100,200,500,1000,2000]
+max_depth = [5, 10]
+cv_log_error_array = []
+for i in alpha:
+    for j in max_depth:
+        print("for n_estimators =", i,"and max depth = ", j)
+        clf = RandomForestClassifier(n_estimators=i, criterion='gini', max_depth=j, random_state=42, n_jobs=-1)
+        clf.fit(train_x_onehotCoding, train_y)
+        sig_clf = CalibratedClassifierCV(clf, method="sigmoid")
+        sig_clf.fit(train_x_onehotCoding, train_y)
+        sig_clf_probs = sig_clf.predict_proba(cv_x_onehotCoding)
+        cv_log_error_array.append(log_loss(cv_y, sig_clf_probs, labels=clf.classes_, eps=1e-15))
+        print("Log Loss :",log_loss(cv_y, sig_clf_probs))
+
+'''fig, ax = plt.subplots()
+features = np.dot(np.array(alpha)[:,None],np.array(max_depth)[None]).ravel()
+ax.plot(features, cv_log_error_array,c='g')
+for i, txt in enumerate(np.round(cv_log_error_array,3)):
+    ax.annotate((alpha[int(i/2)],max_depth[int(i%2)],str(txt)), (features[i],cv_log_error_array[i]))
+plt.grid()
+plt.title("Cross Validation Error for each alpha")
+plt.xlabel("Alpha i's")
+plt.ylabel("Error measure")
+plt.show()
+'''
+
+best_alpha = np.argmin(cv_log_error_array)
+clf = RandomForestClassifier(n_estimators=alpha[int(best_alpha / 2)], criterion='gini',
+                             max_depth=max_depth[int(best_alpha % 2)], random_state=42, n_jobs=-1)
+clf.fit(train_x_onehotCoding, train_y)
+sig_clf = CalibratedClassifierCV(clf, method="sigmoid")
+sig_clf.fit(train_x_onehotCoding, train_y)
+
+predict_y = sig_clf.predict_proba(train_x_onehotCoding)
+print('For values of best estimator = ', alpha[int(best_alpha / 2)], "The train log loss is:",
+      log_loss(y_train, predict_y, labels=clf.classes_, eps=1e-15))
+predict_y = sig_clf.predict_proba(cv_x_onehotCoding)
+print('For values of best estimator = ', alpha[int(best_alpha / 2)], "The cross validation log loss is:",
+      log_loss(y_cv, predict_y, labels=clf.classes_, eps=1e-15))
+predict_y = sig_clf.predict_proba(test_x_onehotCoding)
+print('For values of best estimator = ', alpha[int(best_alpha / 2)], "The test log loss is:",
+      log_loss(y_test, predict_y, labels=clf.classes_, eps=1e-15))
+
 # 6.8.2 Testing the model with the best hyperparameter(One hot Encoding)
+clf = RandomForestClassifier(n_estimators=alpha[int(best_alpha / 2)], criterion='gini',
+                             max_depth=max_depth[int(best_alpha % 2)], random_state=42, n_jobs=-1)
+predict_and_plot_confusion_matrix(train_x_onehotCoding, train_y, cv_x_onehotCoding, cv_y, clf)
+
 # 6.8.3 Feature importance
+
 # correctly classified point
+# test_point_index = 10
+clf = RandomForestClassifier(n_estimators=alpha[int(best_alpha / 2)], criterion='gini',
+                             max_depth=max_depth[int(best_alpha % 2)], random_state=42, n_jobs=-1)
+clf.fit(train_x_onehotCoding, train_y)
+sig_clf = CalibratedClassifierCV(clf, method="sigmoid")
+sig_clf.fit(train_x_onehotCoding, train_y)
+
+test_point_index = 1
+no_feature = 100
+predicted_cls = sig_clf.predict(test_x_onehotCoding[test_point_index])
+print("Predicted Class :", predicted_cls[0])
+print("Predicted Class Probabilities:", np.round(sig_clf.predict_proba(test_x_onehotCoding[test_point_index]), 4))
+print("Actual Class :", test_y[test_point_index])
+indices = np.argsort(-clf.feature_importances_)
+print("-" * 50)
+get_impfeature_names(indices[:no_feature], test_df['TEXT'].iloc[test_point_index],
+                     test_df['Gene'].iloc[test_point_index], test_df['Variation'].iloc[test_point_index], no_feature)
+
 # Incorrectly classified point
+test_point_index = 100
+no_feature = 100
+predicted_cls = sig_clf.predict(test_x_onehotCoding[test_point_index])
+print("Predicted Class :", predicted_cls[0])
+print("Predicted Class Probabilities:", np.round(sig_clf.predict_proba(test_x_onehotCoding[test_point_index]), 4))
+print("Actuall Class :", test_y[test_point_index])
+indices = np.argsort(-clf.feature_importances_)
+print("-" * 50)
+get_impfeature_names(indices[:no_feature], test_df['TEXT'].iloc[test_point_index],
+                     test_df['Gene'].iloc[test_point_index], test_df['Variation'].iloc[test_point_index], no_feature)
 
 ##############
 # 6.9 Random Forest Classifier(Response coding)
