@@ -15,6 +15,9 @@ import re
 import time
 import warnings
 import numpy as np
+import nltk
+
+nltk.download('stopwords')
 from nltk.corpus import stopwords
 from sklearn.decomposition import TruncatedSVD
 from sklearn.preprocessing import normalize
@@ -48,10 +51,8 @@ from sklearn.linear_model import LogisticRegression
 
 warnings.filterwarnings("ignore")
 
-########################
-########################
 # 2. DATA FILES
-# IF DIDNOT DOWNLOAD DATA (using Github kaggle data can be downloaded) #
+
 # CHECKING DIRECTORY
 print('List of files in input folder:', os.listdir('./input'))
 
@@ -62,12 +63,6 @@ print('Number of data points : ', data.shape[0])
 print('Number of features : ', data.shape[1])
 print('Features : ', data.columns.values)
 data.head()
-#
-# ABOUT FEATURES
-# ID : the id of the row used to link the mutation to the clinical evidence
-# Gene : the gene where this genetic mutation is located
-# Variation : the amino-acid change for this mutations
-# Class : 1-9 the class this genetic mutation has been classified on
 
 # 2.2 READING TEXT DATA
 data_text = pd.read_csv("./input/training_text", sep="\|\|", engine="python", names=["ID", "TEXT"],
@@ -108,6 +103,7 @@ print('< preprocessing text data > -> pic3.total_text')
 start_time = time.perf_counter()
 for index, row in data_text.iterrows():
     if type(row['TEXT']) is str:
+
         nlp_preprocessing(row['TEXT'], index, 'TEXT')
     else:
         print("there is no text description for id:", index)
@@ -175,8 +171,6 @@ plt.title('Distribution of yi in train data')
 plt.grid()
 plt.show()
 
-# ref: argsort https://docs.scipy.org/doc/numpy/reference/generated/numpy.argsort.html
-# -(train_class_distribution.values): the minus sign will give us in decreasing order
 sorted_yi = np.argsort(-train_class_distribution.values)
 print('< pic 12 >')
 for i in sorted_yi:
@@ -193,8 +187,6 @@ plt.title('Distribution of yi in test data')
 plt.grid()
 plt.show()
 
-# ref: argsort https://docs.scipy.org/doc/numpy/reference/generated/numpy.argsort.html
-# -(train_class_distribution.values): the minus sign will give us in decreasing order
 sorted_yi = np.argsort(-test_class_distribution.values)
 print('< pic 14 >')
 for i in sorted_yi:
@@ -211,8 +203,6 @@ plt.title('Distribution of yi in cross validation data')
 plt.grid()
 plt.show()
 
-# ref: argsort https://docs.scipy.org/doc/numpy/reference/generated/numpy.argsort.html
-# -(train_class_distribution.values): the minus sign will give us in decreasing order
 sorted_yi = np.argsort(-train_class_distribution.values)
 print('< pic 16 >')
 for i in sorted_yi:
@@ -230,29 +220,7 @@ def plot_confusion_matrix(test_y, predict_y):
     # C = 9,9 matrix, each cell (i,j) represents number of points of class i are predicted class j
 
     A = (((C.T) / (C.sum(axis=1))).T)
-    # divid each element of the confusion matrix with the sum of elements in that column
-
-    # C = [[1, 2],
-    #     [3, 4]]
-    # C.T = [[1, 3],
-    #        [2, 4]]
-    # C.sum(axis = 1)  axis=0 corresonds to columns and axis=1 corresponds to rows in two diamensional array
-    # C.sum(axix =1) = [[3, 7]]
-    # ((C.T)/(C.sum(axis=1))) = [[1/3, 3/7]
-    #                           [2/3, 4/7]]
-
-    # ((C.T)/(C.sum(axis=1))).T = [[1/3, 2/3]
-    #                           [3/7, 4/7]]
-    # sum of row elements = 1
-
     B = (C / C.sum(axis=0))
-    # divid each element of the confusion matrix with the sum of elements in that row
-    # C = [[1, 2],
-    #     [3, 4]]
-    # C.sum(axis = 0)  axis=0 corresonds to columns and axis=1 corresponds to rows in two diamensional array
-    # C.sum(axix =0) = [[4, 6]]
-    # (C/C.sum(axis=0)) = [[1/4, 2/6],
-    #                      [3/4, 4/6]]
 
     labels = [1, 2, 3, 4, 5, 6, 7, 8, 9]
     # representing A in heatmap format
@@ -283,9 +251,7 @@ def plot_confusion_matrix(test_y, predict_y):
 
 
 print('< pic 20. log loss >')
-# we need to generate 9 numbers and the sum of numbers should be 1
-# one solution is to genarate 9 numbers and divide each of the numbers by their sum
-# ref: https://stackoverflow.com/a/18662466/4084039
+
 test_data_len = test_df.shape[0]
 cv_data_len = cv_df.shape[0]
 
@@ -310,61 +276,10 @@ plot_confusion_matrix(y_test, predicted_y + 1)
 
 ########################
 # SIMPLE SUMMARY OF UNIVARIATE ANALYSIS
-# Laplace smoothing
-# (numerator + 10\*alpha) / (denominator + 90\*alpha)
-# when we calculate the probability of a feature belongs to any particular class, we apply laplace smoothing.
-
-# Univariate Analysis
-# code for response coding with Laplace smoothing.
-# alpha : used for laplace smoothing
-# feature: ['gene', 'variation']
-# df: ['train_df', 'test_df', 'cv_df']
-
-
 # ALGORITHM
-# ----------
-# Consider all unique values and the number of occurances of given feature in train data dataframe
-# build a vector (1*9) , the first element = (number of times it occured in class1 + 10*alpha / number of time it occurred in total data+90*alpha)
-
-# gv_dict is like a look up table, for every gene it store a (1*9) representation of it
-# for a value of feature in df:
-# if it is in train data:
-# we add the vector that was stored in 'gv_dict' look up table to 'gv_fea'
-# if it is not there is train:
-# we add [1/9, 1/9, 1/9, 1/9,1/9, 1/9, 1/9, 1/9, 1/9] to 'gv_fea'
-# return 'gv_fea'
-# ----------------------
-########################
 
 # get_gv_fea_dict: Get Gene variation Feature Dict
 def get_gv_fea_dict(alpha, feature, df):
-    # value_count: it contains a dict like
-    # print(train_df['Gene'].value_counts())
-    # output:
-    #        {BRCA1      174
-    #         TP53       106
-    #         EGFR        86
-    #         BRCA2       75
-    #         PTEN        69
-    #         KIT         61
-    #         BRAF        60
-    #         ERBB2       47
-    #         PDGFRA      46
-    #         ...}
-    # print(train_df['Variation'].value_counts())
-    # output:
-    # {
-    # Truncating_Mutations                     63
-    # Deletion                                 43
-    # Amplification                            43
-    # Fusions                                  22
-    # Overexpression                            3
-    # E17K                                      3
-    # Q61L                                      3
-    # S222D                                     2
-    # P130S                                     2
-    # ...
-    # }
     value_count = train_df[feature].value_counts()
 
     # gv_dict : Gene Variation Dict, which contains the probability array for each gene/variation
@@ -376,17 +291,6 @@ def get_gv_fea_dict(alpha, feature, df):
         # vec is 9 diamensional vector
         vec = []
         for k in range(1, 10):
-            # print(train_df.loc[(train_df['Class']==1) & (train_df['Gene']=='BRCA1')])
-            #         ID   Gene             Variation  Class
-            # 2470  2470  BRCA1                S1715C      1
-            # 2486  2486  BRCA1                S1841R      1
-            # 2614  2614  BRCA1                   M1R      1
-            # 2432  2432  BRCA1                L1657P      1
-            # 2567  2567  BRCA1                T1685A      1
-            # 2583  2583  BRCA1                E1660G      1
-            # 2634  2634  BRCA1                W1718L      1
-            # cls_cnt.shape[0] will return the number of rows
-
             cls_cnt = train_df.loc[(train_df['Class'] == k) & (train_df[feature] == i)]
 
             # cls_cnt.shape[0](numerator) will contain the number of time that particular feature occured in whole data
@@ -399,26 +303,12 @@ def get_gv_fea_dict(alpha, feature, df):
 
 # Get Gene variation feature
 def get_gv_feature(alpha, feature, df):
-    # print(gv_dict)
-    #     {'BRCA1': [0.20075757575757575, 0.03787878787878788, 0.068181818181818177, 0.13636363636363635, 0.25, 0.19318181818181818, 0.03787878787878788, 0.03787878787878788, 0.03787878787878788],
-    #      'TP53': [0.32142857142857145, 0.061224489795918366, 0.061224489795918366, 0.27040816326530615, 0.061224489795918366, 0.066326530612244902, 0.051020408163265307, 0.051020408163265307, 0.056122448979591837],
-    #      'EGFR': [0.056818181818181816, 0.21590909090909091, 0.0625, 0.068181818181818177, 0.068181818181818177, 0.0625, 0.34659090909090912, 0.0625, 0.056818181818181816],
-    #      'BRCA2': [0.13333333333333333, 0.060606060606060608, 0.060606060606060608, 0.078787878787878782, 0.1393939393939394, 0.34545454545454546, 0.060606060606060608, 0.060606060606060608, 0.060606060606060608],
-    #      'PTEN': [0.069182389937106917, 0.062893081761006289, 0.069182389937106917, 0.46540880503144655, 0.075471698113207544, 0.062893081761006289, 0.069182389937106917, 0.062893081761006289, 0.062893081761006289],
-    #      'KIT': [0.066225165562913912, 0.25165562913907286, 0.072847682119205295, 0.072847682119205295, 0.066225165562913912, 0.066225165562913912, 0.27152317880794702, 0.066225165562913912, 0.066225165562913912],
-    #      'BRAF': [0.066666666666666666, 0.17999999999999999, 0.073333333333333334, 0.073333333333333334, 0.093333333333333338, 0.080000000000000002, 0.29999999999999999, 0.066666666666666666, 0.066666666666666666],
-    #      ...
-    #     }
     gv_dict = get_gv_fea_dict(alpha, feature, df)
     # value_count is similar in get_gv_fea_dict
     value_count = train_df[feature].value_counts()
 
-    # gv_fea: Gene_variation feature, it will contain the feature for each feature value in the data
     gv_fea = []
-    # for every feature values in the given data frame,
-    # we will check if it is there in the train data
-    # then we will add the feature to gv_fea
-    # if not we will add [1/9,1/9,1/9,1/9,1/9,1/9,1/9,1/9,1/9] to gv_fea
+
     for index, row in df.iterrows():
         if row[feature] in dict(value_count).keys():
             gv_fea.append(gv_dict[row[feature]])
@@ -460,21 +350,6 @@ plt.show()
 
 # Featurize given Gene feature
 
-###############################
-# SHORT SUMMARY OF FEATURIZE
-# code based on this video
-# https://www.appliedaicourse.com/course/applied-ai-course-online/lessons/handling-categorical-and-numerical-features/
-
-# 2ways to featurize
-# One hot Encoding
-# Response coding
-
-# We will choose the appropriate featurization based on the ML model we use.
-# For this problem of multi-class classification with categorical features,
-# one-hot encoding is better for Logistic regression
-# while response coding is better for Random Forests.
-# Both will be used for gene and variation features.
-###############################
 
 print('< pic 24. response-coding & one-hot encoding ')
 
@@ -507,18 +382,6 @@ gene_vectorizer.get_feature_names()
 # Build a proper ML model using just this feature.
 # In this case, we will build a logistic regression model using only Gene feature (one hot encoded) to predict y_i.
 alpha = [10 ** x for x in range(-5, 1)]  # hyperparam for SGD classifier.
-
-# read more about SGDClassifier()
-# at http://scikit-learn.org/stable/modules/generated/sklearn.linear_model.SGDClassifier.html
-# ------------------------------
-# default parameters
-# SGDClassifier(loss=’hinge’, penalty=’l2’, alpha=0.0001, l1_ratio=0.15, fit_intercept=True, max_iter=None, tol=None,
-# shuffle=True, verbose=0, epsilon=0.1, n_jobs=1, random_state=None, learning_rate=’optimal’, eta0=0.0, power_t=0.5,
-# class_weight=None, warm_start=False, average=False, n_iter=None)
-
-# some of the methods
-# fit(X, y[, coef_init, intercept_init, …])	Fit linear model with Stochastic Gradient Descent.
-# predict(X)	Predict class labels for samples in X.
 
 print('< pic 25. for values of alpha & best alpha >')
 print('< pic 26. cross validation error for each alpha >')
@@ -632,22 +495,6 @@ print('< pic 32. values of alpha & best alpha>')
 print('< pic 33. cross validation error for each alpha>')
 alpha = [10 ** x for x in range(-5, 1)]
 
-# read more about SGDClassifier() at http://scikit-learn.org/stable/modules/generated/sklearn.linear_model.SGDClassifier.html
-# ------------------------------
-# default parameters
-# SGDClassifier(loss=’hinge’, penalty=’l2’, alpha=0.0001, l1_ratio=0.15, fit_intercept=True, max_iter=None, tol=None,
-# shuffle=True, verbose=0, epsilon=0.1, n_jobs=1, random_state=None, learning_rate=’optimal’, eta0=0.0, power_t=0.5,
-# class_weight=None, warm_start=False, average=False, n_iter=None)
-
-# some of methods
-# fit(X, y[, coef_init, intercept_init, …])	Fit linear model with Stochastic Gradient Descent.
-# predict(X)	Predict class labels for samples in X.
-
-# -------------------------------
-# video link:
-# ------------------------------
-
-
 cv_log_error_array = []
 for i in alpha:
     clf = SGDClassifier(alpha=i, penalty='l2', loss='log', random_state=42)
@@ -701,20 +548,6 @@ print('2. In cross validation data', cv_coverage, 'out of ', cv_df.shape[0], ":"
 ################
 # TEXT FEATURE
 # Univariate Analysis on Text Feature
-
-# Text feature CHECK LIST
-# how many unique words are in train data
-# how are word frequencies distributed
-# how to featurize text field
-# is the text feature useful in predicting y_i
-# is the text feature stable across train & test & CV datasets
-#
-
-# cls_text is a data frame
-# for every row in data fram consider the 'TEXT'
-# split the words by space
-# make a dict with those words
-# increment its count whenever we see that word
 
 def extract_dictionary_paddle(cls_text):
     dictionary = defaultdict(int)
@@ -812,19 +645,6 @@ print(Counter(sorted_text_occur))
 ##############
 # Train a Logistic regression+Calibration model using text features whicha re on-hot encoded
 alpha = [10 ** x for x in range(-5, 1)]
-
-# read more about SGDClassifier()
-# at http://scikit-learn.org/stable/modules/generated/sklearn.linear_model.SGDClassifier.html
-# ------------------------------
-# default parameters
-# SGDClassifier(loss=’hinge’, penalty=’l2’, alpha=0.0001, l1_ratio=0.15, fit_intercept=True, max_iter=None, tol=None,
-# shuffle=True, verbose=0, epsilon=0.1, n_jobs=1, random_state=None, learning_rate=’optimal’, eta0=0.0, power_t=0.5,
-# class_weight=None, warm_start=False, average=False, n_iter=None)
-
-# some of the methods
-# fit(X, y[, coef_init, intercept_init, …])	Fit linear model with Stochastic Gradient Descent.
-# predict(X)	Predict class labels for samples in X.
-
 
 print('< pic 36. values of alpha & best alpha>')
 print('< pic 37. cross validation error for each alpha>')
@@ -959,14 +779,6 @@ def get_impfeature_names(indices, text, gene, var, no_features):
 # 6.2 Stacking Three types of features
 # merging gene, variance and text features
 
-# building train, test and cross validation data sets
-# a = [[1, 2],
-#      [3, 4]]
-# b = [[4, 5],
-#      [6, 7]]
-# hstack(a, b) = [[1, 2, 4, 5],
-#                [ 3, 4, 6, 7]]
-
 train_gene_var_onehotCoding = hstack((train_gene_feature_onehotCoding, train_variation_feature_onehotCoding))
 test_gene_var_onehotCoding = hstack((test_gene_feature_onehotCoding, test_variation_feature_onehotCoding))
 cv_gene_var_onehotCoding = hstack((cv_gene_feature_onehotCoding, cv_variation_feature_onehotCoding))
@@ -1002,35 +814,6 @@ print("(number of data points * number of features) in cross validation data =",
 # Naive Bayes
 
 # Hyperparameter tuning
-# find more about Multinomial Naive base function here
-# http://scikit-learn.org/stable/modules/generated/sklearn.naive_bayes.MultinomialNB.html
-# -------------------------
-# default parameters
-# sklearn.naive_bayes.MultinomialNB(alpha=1.0, fit_prior=True, class_prior=None)
-
-# some of the methods of MultinomialNB()
-# fit(X, y[, sample_weight])	Fit Naive Bayes classifier according to X, y
-# predict(X)	Perform classification on an array of test vectors X.
-# predict_log_proba(X)	Return log-probability estimates for the test vector X.
-# -----------------------
-# video link: https://www.appliedaicourse.com/course/applied-ai-course-online/lessons/naive-bayes-algorithm-1/
-# -----------------------
-
-
-# find more about CalibratedClassifierCV here
-# at http://scikit-learn.org/stable/modules/generated/sklearn.calibration.CalibratedClassifierCV.html
-# ----------------------------
-# default parameters
-# sklearn.calibration.CalibratedClassifierCV(base_estimator=None, method=’sigmoid’, cv=3)
-#
-# some methods of CalibratedClassifierCV()
-# fit(X, y[, sample_weight])	Fit the calibrated model
-# get_params([deep])	Get parameters for this estimator.
-# predict(X)	Predict the target of new samples.
-# predict_proba(X)	Posterior probabilities of classification
-# ----------------------------
-# video link: https://www.appliedaicourse.com/course/applied-ai-course-online/lessons/naive-bayes-algorithm-1/
-# -----------------------
 
 print('< pic 40. alpha values>')
 print('< pic 41. cross validation error for each alpha>')
@@ -1076,33 +859,6 @@ print('For values of best alpha = ', alpha[best_alpha], "The test log loss is:",
       log_loss(y_test, predict_y, labels=clf.classes_, eps=1e-15))
 
 print('< pic 42. confusion & precision & recall matrix>')
-# find more about Multinomial Naive base function here
-# http://scikit-learn.org/stable/modules/generated/sklearn.naive_bayes.MultinomialNB.html
-# -------------------------
-# default paramters
-# sklearn.naive_bayes.MultinomialNB(alpha=1.0, fit_prior=True, class_prior=None)
-
-# some of methods of MultinomialNB()
-# fit(X, y[, sample_weight])	Fit Naive Bayes classifier according to X, y
-# predict(X)	Perform classification on an array of test vectors X.
-# predict_log_proba(X)	Return log-probability estimates for the test vector X.
-# -----------------------
-# video link: https://www.appliedaicourse.com/course/applied-ai-course-online/lessons/naive-bayes-algorithm-1/
-# -----------------------
-
-
-# find more about CalibratedClassifierCV here
-# at http://scikit-learn.org/stable/modules/generated/sklearn.calibration.CalibratedClassifierCV.html
-# ----------------------------
-# default paramters
-# sklearn.calibration.CalibratedClassifierCV(base_estimator=None, method=’sigmoid’, cv=3)
-#
-# some of the methods of CalibratedClassifierCV()
-# fit(X, y[, sample_weight])	Fit the calibrated model
-# get_params([deep])	Get parameters for this estimator.
-# predict(X)	Predict the target of new samples.
-# predict_proba(X)	Posterior probabilities of classification
-# ----------------------------
 
 clf = MultinomialNB(alpha=alpha[best_alpha])
 clf.fit(train_x_onehotCoding, train_y)
@@ -1122,7 +878,8 @@ predicted_cls = sig_clf.predict(test_x_onehotCoding[test_point_index])
 print("Predicted Class :", predicted_cls[0])
 print("Predicted Class Probabilities:", np.round(sig_clf.predict_proba(test_x_onehotCoding[test_point_index]), 4))
 print("Actual Class :", test_y[test_point_index])
-indices = np.argsort(abs(-clf.coef_))[predicted_cls - 1][:, :no_feature]
+# error .coef .
+indices = np.argsort(abs(-clf.feature_count_))[predicted_cls - 1][:, :no_feature]
 print("-" * 50)
 get_impfeature_names(indices[0], test_df['TEXT'].iloc[test_point_index], test_df['Gene'].iloc[test_point_index],
                      test_df['Variation'].iloc[test_point_index], no_feature)
@@ -1134,7 +891,7 @@ predicted_cls = sig_clf.predict(test_x_onehotCoding[test_point_index])
 print("Predicted Class :", predicted_cls[0])
 print("Predicted Class Probabilities:", np.round(sig_clf.predict_proba(test_x_onehotCoding[test_point_index]), 4))
 print("Actual Class :", test_y[test_point_index])
-indices = np.argsort(abs(-clf.coef_))[predicted_cls - 1][:, :no_feature]
+indices = np.argsort(abs(-clf.feature_count_))[predicted_cls - 1][:, :no_feature]
 print("-" * 50)
 get_impfeature_names(indices[0], test_df['TEXT'].iloc[test_point_index], test_df['Gene'].iloc[test_point_index],
                      test_df['Variation'].iloc[test_point_index], no_feature)
@@ -1145,35 +902,6 @@ print('< KNN model >')
 # K nearest neighbor classification
 
 # 6.4.1 Hyperparameter tuning
-# find more about KNeighborsClassifier() here
-# http://scikit-learn.org/stable/modules/generated/sklearn.neighbors.KNeighborsClassifier.html
-# -------------------------
-# default parameter
-# KNeighborsClassifier(n_neighbors=5, weights=’uniform’, algorithm=’auto’, leaf_size=30, p=2,
-# metric=’minkowski’, metric_params=None, n_jobs=1, **kwargs)
-
-# methods of
-# fit(X, y) : Fit the model using X as training data and y as target values
-# predict(X):Predict the class labels for the provided data
-# predict_proba(X):Return probability estimates for the test data X.
-# -------------------------------------
-# video link:
-# https://www.appliedaicourse.com/course/applied-ai-course-online/lessons/k-nearest-neighbors-geometric-intuition-with-a-toy-example-1/
-# -------------------------------------
-
-
-# find more about CalibratedClassifierCV here
-# at http://scikit-learn.org/stable/modules/generated/sklearn.calibration.CalibratedClassifierCV.html
-# ----------------------------
-# default parameters
-# sklearn.calibration.CalibratedClassifierCV(base_estimator=None, method=’sigmoid’, cv=3)
-#
-# some methods of CalibratedClassifierCV()
-# fit(X, y[, sample_weight])	Fit the calibrated model
-# get_params([deep])	Get parameters for this estimator.
-# predict(X)	Predict the target of new samples.
-# predict_proba(X)	Posterior probabilities of classification
-
 
 alpha = [5, 11, 15, 21, 31, 41, 51, 99]
 cv_log_error_array = []
@@ -1215,21 +943,6 @@ print('For values of best alpha = ', alpha[best_alpha], "The test log loss is:",
       log_loss(y_test, predict_y, labels=clf.classes_, eps=1e-15))
 
 # 6.4.2 Testing the model with the best hyperparameter
-# find more about KNeighborsClassifier() here
-# http://scikit-learn.org/stable/modules/generated/sklearn.neighbors.KNeighborsClassifier.html
-# -------------------------
-# default parameter
-# KNeighborsClassifier(n_neighbors=5, weights=’uniform’, algorithm=’auto’, leaf_size=30, p=2,
-# metric=’minkowski’, metric_params=None, n_jobs=1, **kwargs)
-
-# methods of
-# fit(X, y) : Fit the model using X as training data and y as target values
-# predict(X):Predict the class labels for the provided data
-# predict_proba(X):Return probability estimates for the test data X.
-# -------------------------------------
-# video link:
-# https://www.appliedaicourse.com/course/applied-ai-course-online/lessons/k-nearest-neighbors-geometric-intuition-with-a-toy-example-1/
-# -------------------------------------
 clf = KNeighborsClassifier(n_neighbors=alpha[best_alpha])
 predict_and_plot_confusion_matrix(train_x_responseCoding, train_y, cv_x_responseCoding, cv_y, clf)
 
@@ -1268,35 +981,6 @@ print("Fequency of nearest points :", Counter(train_y[neighbors[1][0]]))
 print('< Logistic Regression with class balancing >')
 
 # 6.5.1 Hyperparameter tuning
-# read more about SGDClassifier()
-# at http://scikit-learn.org/stable/modules/generated/sklearn.linear_model.SGDClassifier.html
-# ------------------------------
-# default parameters
-# SGDClassifier(loss=’hinge’, penalty=’l2’, alpha=0.0001, l1_ratio=0.15, fit_intercept=True, max_iter=None, tol=None,
-# shuffle=True, verbose=0, epsilon=0.1, n_jobs=1, random_state=None, learning_rate=’optimal’, eta0=0.0, power_t=0.5,
-# class_weight=None, warm_start=False, average=False, n_iter=None)
-
-# some methods
-# fit(X, y[, coef_init, intercept_init, …])	Fit linear model with Stochastic Gradient Descent.
-# predict(X)	Predict class labels for samples in X.
-
-# -------------------------------
-# video link: https://www.appliedaicourse.com/course/applied-ai-course-online/lessons/geometric-intuition-1/
-# ------------------------------
-
-
-# find more about CalibratedClassifierCV here
-# at http://scikit-learn.org/stable/modules/generated/sklearn.calibration.CalibratedClassifierCV.html
-# ----------------------------
-# default parameters
-# sklearn.calibration.CalibratedClassifierCV(base_estimator=None, method=’sigmoid’, cv=3)
-#
-# some methods of CalibratedClassifierCV()
-# fit(X, y[, sample_weight])	Fit the calibrated model
-# get_params([deep])	Get parameters for this estimator.
-# predict(X)	Predict the target of new samples.
-# predict_proba(X)	Posterior probabilities of classification
-# -------------------------------------
 
 alpha = [10 ** x for x in range(-6, 3)]
 cv_log_error_array = []
@@ -1338,22 +1022,7 @@ print('For values of best alpha = ', alpha[best_alpha], "The test log loss is:",
       log_loss(y_test, predict_y, labels=clf.classes_, eps=1e-15))
 
 # 6.5.2 Testing the model with the best hyperparameter
-# read more about SGDClassifier()
-# at http://scikit-learn.org/stable/modules/generated/sklearn.linear_model.SGDClassifier.html
-# ------------------------------
-# default parameters
-# SGDClassifier(loss=’hinge’, penalty=’l2’, alpha=0.0001, l1_ratio=0.15, fit_intercept=True, max_iter=None, tol=None,
-# shuffle=True, verbose=0, epsilon=0.1, n_jobs=1, random_state=None, learning_rate=’optimal’, eta0=0.0, power_t=0.5,
-# class_weight=None, warm_start=False, average=False, n_iter=None)
 
-# some methods
-# fit(X, y[, coef_init, intercept_init, …])	Fit linear model with Stochastic Gradient Descent.
-# predict(X)	Predict class labels for samples in X.
-
-# -------------------------------
-# video link:
-# https://www.appliedaicourse.com/course/applied-ai-course-online/lessons/geometric-intuition-1/
-# ------------------------------
 clf = SGDClassifier(class_weight='balanced', alpha=alpha[best_alpha], penalty='l2', loss='log', random_state=42)
 predict_and_plot_confusion_matrix(train_x_onehotCoding, train_y, cv_x_onehotCoding, cv_y, clf)
 
@@ -1578,18 +1247,6 @@ for i in alpha:
         cv_log_error_array.append(log_loss(cv_y, sig_clf_probs, labels=clf.classes_, eps=1e-15))
         print("Log Loss :", log_loss(cv_y, sig_clf_probs))
 
-'''fig, ax = plt.subplots()
-features = np.dot(np.array(alpha)[:,None],np.array(max_depth)[None]).ravel()
-ax.plot(features, cv_log_error_array,c='g')
-for i, txt in enumerate(np.round(cv_log_error_array,3)):
-    ax.annotate((alpha[int(i/2)],max_depth[int(i%2)],str(txt)), (features[i],cv_log_error_array[i]))
-plt.grid()
-plt.title("Cross Validation Error for each alpha")
-plt.xlabel("Alpha i's")
-plt.ylabel("Error measure")
-plt.show()
-'''
-
 best_alpha = np.argmin(cv_log_error_array)
 clf = RandomForestClassifier(n_estimators=alpha[int(best_alpha / 2)], criterion='gini',
                              max_depth=max_depth[int(best_alpha % 2)], random_state=42, n_jobs=-1)
@@ -1628,7 +1285,7 @@ predicted_cls = sig_clf.predict(test_x_onehotCoding[test_point_index])
 print("Predicted Class :", predicted_cls[0])
 print("Predicted Class Probabilities:", np.round(sig_clf.predict_proba(test_x_onehotCoding[test_point_index]), 4))
 print("Actual Class :", test_y[test_point_index])
-indices = np.argsort(-clf.feature_importances_)
+indices = np.argsort(clf.feature_importances_)
 print("-" * 50)
 get_impfeature_names(indices[:no_feature], test_df['TEXT'].iloc[test_point_index],
                      test_df['Gene'].iloc[test_point_index], test_df['Variation'].iloc[test_point_index], no_feature)
@@ -1640,7 +1297,7 @@ predicted_cls = sig_clf.predict(test_x_onehotCoding[test_point_index])
 print("Predicted Class :", predicted_cls[0])
 print("Predicted Class Probabilities:", np.round(sig_clf.predict_proba(test_x_onehotCoding[test_point_index]), 4))
 print("Actuall Class :", test_y[test_point_index])
-indices = np.argsort(-clf.feature_importances_)
+indices = np.argsort(clf.feature_importances_)
 print("-" * 50)
 get_impfeature_names(indices[:no_feature], test_df['TEXT'].iloc[test_point_index],
                      test_df['Gene'].iloc[test_point_index], test_df['Variation'].iloc[test_point_index], no_feature)
@@ -1663,18 +1320,6 @@ for i in alpha:
         sig_clf_probs = sig_clf.predict_proba(cv_x_responseCoding)
         cv_log_error_array.append(log_loss(cv_y, sig_clf_probs, labels=clf.classes_, eps=1e-15))
         print("Log Loss :", log_loss(cv_y, sig_clf_probs))
-'''
-fig, ax = plt.subplots()
-features = np.dot(np.array(alpha)[:,None],np.array(max_depth)[None]).ravel()
-ax.plot(features, cv_log_error_array,c='g')
-for i, txt in enumerate(np.round(cv_log_error_array,3)):
-    ax.annotate((alpha[int(i/4)],max_depth[int(i%4)],str(txt)), (features[i],cv_log_error_array[i]))
-plt.grid()
-plt.title("Cross Validation Error for each alpha")
-plt.xlabel("Alpha i's")
-plt.ylabel("Error measure")
-plt.show()
-'''
 
 best_alpha = np.argmin(cv_log_error_array)
 clf = RandomForestClassifier(n_estimators=alpha[int(best_alpha / 4)], criterion='gini',
@@ -1699,7 +1344,6 @@ clf = RandomForestClassifier(max_depth=max_depth[int(best_alpha % 4)], n_estimat
 predict_and_plot_confusion_matrix(train_x_responseCoding, train_y, cv_x_responseCoding, cv_y, clf)
 
 # 6.9.3 Feature importance
-
 # correctly classified point
 clf = RandomForestClassifier(n_estimators=alpha[int(best_alpha / 4)], criterion='gini',
                              max_depth=max_depth[int(best_alpha % 4)], random_state=42, n_jobs=-1)
@@ -1714,7 +1358,7 @@ print("Predicted Class :", predicted_cls[0])
 print("Predicted Class Probabilities:",
       np.round(sig_clf.predict_proba(test_x_responseCoding[test_point_index].reshape(1, -1)), 4))
 print("Actual Class :", test_y[test_point_index])
-indices = np.argsort(-clf.feature_importances_)
+indices = np.argsort(clf.feature_importances_)
 print("-" * 50)
 for i in indices:
     if i < 9:
@@ -1731,7 +1375,7 @@ print("Predicted Class :", predicted_cls[0])
 print("Predicted Class Probabilities:",
       np.round(sig_clf.predict_proba(test_x_responseCoding[test_point_index].reshape(1, -1)), 4))
 print("Actual Class :", test_y[test_point_index])
-indices = np.argsort(-clf.feature_importances_)
+indices = np.argsort(clf.feature_importances_)
 print("-" * 50)
 for i in indices:
     if i < 9:
@@ -1746,64 +1390,6 @@ for i in indices:
 print('< Model Stacking >')
 
 # 6.10.1 Hyperparameter tuning
-# read more about SGDClassifier() at
-# http://scikit-learn.org/stable/modules/generated/sklearn.linear_model.SGDClassifier.html
-# ------------------------------
-# default parameters
-# SGDClassifier(loss=’hinge’, penalty=’l2’, alpha=0.0001, l1_ratio=0.15, fit_intercept=True, max_iter=None, tol=None,
-# shuffle=True, verbose=0, epsilon=0.1, n_jobs=1, random_state=None, learning_rate=’optimal’, eta0=0.0, power_t=0.5,
-# class_weight=None, warm_start=False, average=False, n_iter=None)
-
-# some methods
-# fit(X, y[, coef_init, intercept_init, …])	Fit linear model with Stochastic Gradient Descent.
-# predict(X)	Predict class labels for samples in X.
-
-# -------------------------------
-# video link:
-# https://www.appliedaicourse.com/course/applied-ai-course-online/lessons/geometric-intuition-1/
-# ------------------------------
-
-
-# read more about support vector machines with linear kernals here
-# http://scikit-learn.org/stable/modules/generated/sklearn.svm.SVC.html
-# --------------------------------
-# default parameters
-# SVC(C=1.0, kernel=’rbf’, degree=3, gamma=’auto’, coef0=0.0, shrinking=True, probability=False, tol=0.001,
-# cache_size=200, class_weight=None, verbose=False, max_iter=-1, decision_function_shape=’ovr’, random_state=None)
-
-# Some of methods of SVM()
-# fit(X, y, [sample_weight])	Fit the SVM model according to the given training data.
-# predict(X)	Perform classification on samples in X.
-# --------------------------------
-# video link:
-# https://www.appliedaicourse.com/course/applied-ai-course-online/lessons/mathematical-derivation-copy-8/
-# --------------------------------
-
-
-# read more about support vector machines with linear kernals here
-# http://scikit-learn.org/stable/modules/generated/sklearn.ensemble.RandomForestClassifier.html
-# --------------------------------
-# default parameters
-# sklearn.ensemble.RandomForestClassifier(n_estimators=10, criterion=’gini’, max_depth=None, min_samples_split=2,
-# min_samples_leaf=1, min_weight_fraction_leaf=0.0, max_features=’auto’, max_leaf_nodes=None, min_impurity_decrease=0.0,
-# min_impurity_split=None, bootstrap=True, oob_score=False, n_jobs=1, random_state=None, verbose=0, warm_start=False,
-# class_weight=None)
-
-# Some methods of RandomForestClassifier()
-# fit(X, y, [sample_weight])	Fit the SVM model according to the given training data.
-# predict(X)	Perform classification on samples in X.
-# predict_proba (X)	Perform classification on samples in X.
-
-# some attributes of  RandomForestClassifier()
-# feature_importances_ : array of shape = [n_features]
-# The feature importances (the higher, the more important the feature).
-
-# --------------------------------
-# video link:
-# https://www.appliedaicourse.com/course/applied-ai-course-online/lessons/random-forest-and-their-construction-2/
-# --------------------------------
-
-
 clf1 = SGDClassifier(alpha=0.001, penalty='l2', loss='log', class_weight='balanced', random_state=0)
 clf1.fit(train_x_onehotCoding, train_y)
 sig_clf1 = CalibratedClassifierCV(clf1, method="sigmoid")
@@ -1854,7 +1440,6 @@ print("Number of missclassified point :",
 plot_confusion_matrix(test_y=test_y, predict_y=sclf.predict(test_x_onehotCoding))
 
 # 6.10.3 Maximum voting classifier
-# Refer:http://scikit-learn.org/stable/modules/generated/sklearn.ensemble.VotingClassifier.html
 from sklearn.ensemble import VotingClassifier
 
 vclf = VotingClassifier(estimators=[('lr', sig_clf1), ('svc', sig_clf2), ('rf', sig_clf3)], voting='soft')
@@ -1869,3 +1454,4 @@ plot_confusion_matrix(test_y=test_y, predict_y=vclf.predict(test_x_onehotCoding)
 ##############
 
 # print('< pic 43. >')
+print('done')
